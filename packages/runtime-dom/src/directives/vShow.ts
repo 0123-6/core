@@ -10,35 +10,14 @@ export interface VShowElement extends HTMLElement {
 }
 
 export const vShow: ObjectDirective<VShowElement> & { name?: 'show' } = {
-  beforeMount(el, { value }, { transition }) {
+  beforeMount(el, { value }) {
     el[vShowOriginalDisplay] =
       el.style.display === 'none' ? '' : el.style.display
-    if (transition && value) {
-      transition.beforeEnter(el)
-    } else {
-      setDisplay(el, value)
-    }
+    setDisplay(el, value)
   },
-  mounted(el, { value }, { transition }) {
-    if (transition && value) {
-      transition.enter(el)
-    }
-  },
-  updated(el, { value, oldValue }, { transition }) {
+  updated(el, { value, oldValue }) {
     if (!value === !oldValue) return
-    if (transition) {
-      if (value) {
-        transition.beforeEnter(el)
-        setDisplay(el, true)
-        transition.enter(el)
-      } else {
-        transition.leave(el, () => {
-          setDisplay(el, false)
-        })
-      }
-    } else {
-      setDisplay(el, value)
-    }
+    setDisplay(el, value)
   },
   beforeUnmount(el, { value }) {
     setDisplay(el, value)

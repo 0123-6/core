@@ -1,11 +1,7 @@
 import type { RendererOptions } from '@vue/runtime-core'
 
-export const svgNS = 'http://www.w3.org/2000/svg'
-export const mathmlNS = 'http://www.w3.org/1998/Math/MathML'
-
-const doc = (typeof document !== 'undefined' ? document : null) as Document
-
-const templateContainer = doc && /*#__PURE__*/ doc.createElement('template')
+const templateContainer =
+  document && /*#__PURE__*/ document.createElement('template')
 
 export const nodeOps: Omit<RendererOptions<Node, Element>, 'patchProp'> = {
   insert: (child, parent, anchor) => {
@@ -19,24 +15,17 @@ export const nodeOps: Omit<RendererOptions<Node, Element>, 'patchProp'> = {
     }
   },
 
-  createElement: (tag, namespace, is, props): Element => {
-    const el =
-      namespace === 'svg'
-        ? doc.createElementNS(svgNS, tag)
-        : namespace === 'mathml'
-          ? doc.createElementNS(mathmlNS, tag)
-          : doc.createElement(tag, is ? { is } : undefined)
-
+  createElement: (tag, is, props): Element => {
+    const el = document.createElement(tag, is ? { is } : undefined)
     if (tag === 'select' && props && props.multiple != null) {
       ;(el as HTMLSelectElement).setAttribute('multiple', props.multiple)
     }
-
     return el
   },
 
-  createText: text => doc.createTextNode(text),
+  createText: text => document.createTextNode(text),
 
-  createComment: text => doc.createComment(text),
+  createComment: text => document.createComment(text),
 
   setText: (node, text) => {
     node.nodeValue = text
@@ -50,7 +39,7 @@ export const nodeOps: Omit<RendererOptions<Node, Element>, 'patchProp'> = {
 
   nextSibling: node => node.nextSibling,
 
-  querySelector: selector => doc.querySelector(selector),
+  querySelector: selector => document.querySelector(selector),
 
   setScopeId(el, id) {
     el.setAttribute(id, '')
@@ -60,7 +49,7 @@ export const nodeOps: Omit<RendererOptions<Node, Element>, 'patchProp'> = {
   // Reason: innerHTML.
   // Static content here can only come from compiled templates.
   // As long as the user only uses trusted templates, this is safe.
-  insertStaticContent(content, parent, anchor, namespace, start, end) {
+  insertStaticContent(content, parent, anchor, start, end) {
     // <parent> before | first ... last | anchor </parent>
     const before = anchor ? anchor.previousSibling : parent.lastChild
     // #5308 can only take cached path if:
@@ -74,22 +63,9 @@ export const nodeOps: Omit<RendererOptions<Node, Element>, 'patchProp'> = {
       }
     } else {
       // fresh insert
-      templateContainer.innerHTML =
-        namespace === 'svg'
-          ? `<svg>${content}</svg>`
-          : namespace === 'mathml'
-            ? `<math>${content}</math>`
-            : content
+      templateContainer.innerHTML = content
 
       const template = templateContainer.content
-      if (namespace === 'svg' || namespace === 'mathml') {
-        // remove outer svg/math wrapper
-        const wrapper = template.firstChild!
-        while (wrapper.firstChild) {
-          template.appendChild(wrapper.firstChild)
-        }
-        template.removeChild(wrapper)
-      }
       parent.insertBefore(template, anchor)
     }
     return [

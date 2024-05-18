@@ -45,7 +45,6 @@ export {
   type ComputedSetter,
   type ComputedRefImpl,
 } from './computed'
-export { deferredComputed } from './deferredComputed'
 export {
   effect,
   stop,

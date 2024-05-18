@@ -17,7 +17,6 @@ import {
 import { ErrorCodes, handleError } from './errorHandling'
 import { PatchFlags, ShapeFlags, isModelListener, isOn } from '@vue/shared'
 import { warn } from './warning'
-import { isHmrUpdating } from './hmr'
 import type { NormalizedProps } from './componentProps'
 import { isEmitListener } from './componentEmits'
 import { setCurrentRenderingInstance } from './componentRenderContext'
@@ -142,14 +141,6 @@ export function renderComponentRoot(
   // in dev mode, comments are preserved, and it's possible for a template
   // to have comments along side the root element which makes it a fragment
   let root = result
-  let setRoot: SetRootFn = undefined
-  if (
-    __DEV__ &&
-    result.patchFlag > 0 &&
-    result.patchFlag & PatchFlags.DEV_ROOT_FRAGMENT
-  ) {
-    ;[root, setRoot] = getChildRoot(result)
-  }
 
   if (fallthroughAttrs && inheritAttrs !== false) {
     const keys = Object.keys(fallthroughAttrs)
@@ -245,22 +236,8 @@ export function renderComponentRoot(
     root = cloneVNode(root, null, false, true)
     root.dirs = root.dirs ? root.dirs.concat(vnode.dirs) : vnode.dirs
   }
-  // inherit transition data
-  if (vnode.transition) {
-    if (__DEV__ && !isElementRoot(root)) {
-      warn(
-        `Component inside <Transition> renders non-element root node ` +
-          `that cannot be animated.`,
-      )
-    }
-    root.transition = vnode.transition
-  }
 
-  if (__DEV__ && setRoot) {
-    setRoot(root)
-  } else {
-    result = root
-  }
+  result = root
 
   setCurrentRenderingInstance(prev)
   return result
@@ -369,18 +346,6 @@ export function shouldUpdateComponent(
   const { props: nextProps, children: nextChildren, patchFlag } = nextVNode
   const emits = component!.emitsOptions
 
-  // Parent component's render function was hot-updated. Since this may have
-  // caused the child component's slots content to have changed, we need to
-  // force the child to update as well.
-  if (__DEV__ && (prevChildren || nextChildren) && isHmrUpdating) {
-    return true
-  }
-
-  // force child update for runtime directive or transition on component vnode.
-  if (nextVNode.dirs || nextVNode.transition) {
-    return true
-  }
-
   if (optimized && patchFlag >= 0) {
     if (patchFlag & PatchFlags.DYNAMIC_SLOTS) {
       // slot content that references values that might have changed,
@@ -455,9 +420,6 @@ export function updateHOCHostEl(
 ) {
   while (parent) {
     const root = parent.subTree
-    if (root.suspense && root.suspense.activeBranch === vnode) {
-      root.el = vnode.el
-    }
     if (root === vnode) {
       ;(vnode = parent.vnode).el = el
       parent = parent.parent

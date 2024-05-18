@@ -16,11 +16,10 @@ import type {
   ComponentPublicInstance,
 } from './componentPublicInstance'
 import { type Directive, validateDirectiveName } from './directives'
-import type { ElementNamespace, RootRenderFunction } from './renderer'
+import type { RootRenderFunction } from './renderer'
 import type { InjectionKey } from './apiInject'
 import { warn } from './warning'
 import { createVNode } from './vnode'
-import type { RootHydrateFunction } from './hydration'
 import { NO, extend, isFunction, isObject } from '@vue/shared'
 import { version } from '.'
 import type { NormalizedPropsOptions } from './componentProps'
@@ -42,11 +41,7 @@ export interface App<HostElement = any> {
   component(name: string, component: Component | DefineComponent): this
   directive<T = any, V = any>(name: string): Directive<T, V> | undefined
   directive<T = any, V = any>(name: string, directive: Directive<T, V>): this
-  mount(
-    rootContainer: HostElement | string,
-    isHydrate?: boolean,
-    namespace?: boolean | ElementNamespace,
-  ): ComponentPublicInstance
+  mount(rootContainer: HostElement | string): ComponentPublicInstance
   unmount(): void
   provide<T>(key: InjectionKey<T> | string, value: T): this
 
@@ -202,11 +197,9 @@ let uid = 0
 /**
  * createAppAPI的函数实现
  * @param render
- * @param hydrate
  */
 export function createAppAPI<HostElement>(
   render: RootRenderFunction<HostElement>,
-  hydrate?: RootHydrateFunction,
 ): CreateAppFunction<HostElement> {
   // 返回此函数，最外层ensureRenderer().createApp()即是调用此方法
   // 组件的构造参数传递给rootComponent

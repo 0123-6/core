@@ -3,7 +3,7 @@ import { patchStyle } from './modules/style'
 import { patchAttr } from './modules/attrs'
 import { patchDOMProp } from './modules/props'
 import { patchEvent } from './modules/events'
-import { isFunction, isModelListener, isOn, isString } from '@vue/shared'
+import { isModelListener, isOn, isString } from '@vue/shared'
 import type { RendererOptions } from '@vue/runtime-core'
 
 const isNativeOn = (key: string) =>
@@ -20,15 +20,12 @@ export const patchProp: DOMRendererOptions['patchProp'] = (
   key,
   prevValue,
   nextValue,
-  namespace,
   prevChildren,
   parentComponent,
-  parentSuspense,
   unmountChildren,
 ) => {
-  const isSVG = namespace === 'svg'
   if (key === 'class') {
-    patchClass(el, nextValue, isSVG)
+    patchClass(el, nextValue)
   } else if (key === 'style') {
     patchStyle(el, prevValue, nextValue)
   } else if (isOn(key)) {
@@ -41,7 +38,7 @@ export const patchProp: DOMRendererOptions['patchProp'] = (
       ? ((key = key.slice(1)), true)
       : key[0] === '^'
         ? ((key = key.slice(1)), false)
-        : shouldSetAsProp(el, key, nextValue, isSVG)
+        : shouldSetAsProp(el, key, nextValue)
   ) {
     patchDOMProp(
       el,
@@ -49,7 +46,6 @@ export const patchProp: DOMRendererOptions['patchProp'] = (
       nextValue,
       prevChildren,
       parentComponent,
-      parentSuspense,
       unmountChildren,
     )
   } else {
@@ -62,29 +58,11 @@ export const patchProp: DOMRendererOptions['patchProp'] = (
     } else if (key === 'false-value') {
       ;(el as any)._falseValue = nextValue
     }
-    patchAttr(el, key, nextValue, isSVG, parentComponent)
+    patchAttr(el, key, nextValue)
   }
 }
 
-function shouldSetAsProp(
-  el: Element,
-  key: string,
-  value: unknown,
-  isSVG: boolean,
-) {
-  if (isSVG) {
-    // most keys must be set as attribute on svg elements to work
-    // ...except innerHTML & textContent
-    if (key === 'innerHTML' || key === 'textContent') {
-      return true
-    }
-    // or native onclick with function values
-    if (key in el && isNativeOn(key) && isFunction(value)) {
-      return true
-    }
-    return false
-  }
-
+function shouldSetAsProp(el: Element, key: string, value: unknown) {
   // these are enumerated attrs, however their corresponding DOM properties
   // are actually booleans - this leads to setting it with a string "false"
   // value leading it to be coerced to `true`, so we need to always treat

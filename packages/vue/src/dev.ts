@@ -1,5 +1,3 @@
-import { initCustomFormatter } from '@vue/runtime-dom'
-
 export function initDev() {
   if (__BROWSER__) {
     /* istanbul ignore if */
@@ -9,7 +7,5 @@ export function initDev() {
           `Make sure to use the production build (*.prod.js) when deploying for production.`,
       )
     }
-
-    initCustomFormatter()
   }
 }

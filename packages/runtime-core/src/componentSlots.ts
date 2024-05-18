@@ -19,9 +19,7 @@ import {
 import { warn } from './warning'
 import { isKeepAlive } from './components/KeepAlive'
 import { type ContextualRenderFn, withCtx } from './componentRenderContext'
-import { isHmrUpdating } from './hmr'
 import { DeprecationTypes, isCompatEnabled } from './compat/compatConfig'
-import { TriggerOpTypes, trigger } from '@vue/reactivity'
 import { createInternalObject } from './internalObject'
 
 export type Slot<T extends any = any> = (
@@ -192,12 +190,7 @@ export const updateSlots = (
     const type = (children as RawSlots)._
     if (type) {
       // compiled slots.
-      if (__DEV__ && isHmrUpdating) {
-        // Parent was HMR updated so slot content may have changed.
-        // force update slots and mark instance for hmr as well
-        extend(slots, children as Slots)
-        trigger(instance, TriggerOpTypes.SET, '$slots')
-      } else if (optimized && type === SlotFlags.STABLE) {
+      if (optimized && type === SlotFlags.STABLE) {
         // compiled AND stable.
         // no need to update, and skip stale slots removal.
         needDeletionCheck = false

@@ -16,7 +16,6 @@ import type {
   ClassComponent,
   Component,
   ComponentInternalInstance,
-  ConcreteComponent,
   Data,
 } from './component'
 import type { RawSlots } from './componentSlots'
@@ -29,7 +28,6 @@ import {
 } from './componentRenderContext'
 import type { RendererElement, RendererNode } from './renderer'
 import type { NULL_DYNAMIC_COMPONENT } from './helpers/resolveAssets'
-import { hmrDirtyComponents } from './hmr'
 import { ErrorCodes, callWithAsyncErrorHandling } from './errorHandling'
 import type { ComponentPublicInstance } from './componentPublicInstance'
 import { isInternalObject } from './internalObject'
@@ -333,18 +331,6 @@ export function isVNode(value: any): value is VNode {
 }
 
 export function isSameVNodeType(n1: VNode, n2: VNode): boolean {
-  if (
-    __DEV__ &&
-    n2.shapeFlag & ShapeFlags.COMPONENT &&
-    hmrDirtyComponents.has(n2.type as ConcreteComponent)
-  ) {
-    // #7042, ensure the vnode being unmounted during HMR
-    // bitwise operations to remove keep alive flags
-    n1.shapeFlag &= ~ShapeFlags.COMPONENT_SHOULD_KEEP_ALIVE
-    n2.shapeFlag &= ~ShapeFlags.COMPONENT_KEPT_ALIVE
-    // HMR only: if the component has been hot-updated, force a reload.
-    return false
-  }
   return n1.type === n2.type && n1.key === n2.key
 }
 

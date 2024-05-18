@@ -14,7 +14,6 @@ import { type SchedulerJob, queueJob } from './scheduler'
 import {
   EMPTY_OBJ,
   NOOP,
-  extend,
   hasChanged,
   isArray,
   isFunction,
@@ -28,7 +27,6 @@ import {
 import {
   type ComponentInternalInstance,
   currentInstance,
-  isInSSRComponentSetup,
   setCurrentInstance,
 } from './component'
 import {
@@ -37,11 +35,9 @@ import {
   callWithErrorHandling,
 } from './errorHandling'
 import { queuePostRenderEffect } from './renderer'
-import { warn } from './warning'
 import { DeprecationTypes } from './compat/compatConfig'
 import { checkCompatEnabled, isCompatEnabled } from './compat/compatConfig'
 import type { ObjectWatchOptionItem } from './componentOptions'
-import { useSSRContext } from './helpers/useSsrContext'
 
 export type WatchEffect = (onCleanup: OnCleanup) => void
 
@@ -87,26 +83,12 @@ export function watchEffect(
   return doWatch(effect, null, options)
 }
 
-export function watchPostEffect(
-  effect: WatchEffect,
-  options?: DebuggerOptions,
-) {
-  return doWatch(
-    effect,
-    null,
-    __DEV__ ? extend({}, options as any, { flush: 'post' }) : { flush: 'post' },
-  )
+export function watchPostEffect(effect: WatchEffect) {
+  return doWatch(effect, null, { flush: 'post' })
 }
 
-export function watchSyncEffect(
-  effect: WatchEffect,
-  options?: DebuggerOptions,
-) {
-  return doWatch(
-    effect,
-    null,
-    __DEV__ ? extend({}, options as any, { flush: 'sync' }) : { flush: 'sync' },
-  )
+export function watchSyncEffect(effect: WatchEffect) {
+  return doWatch(effect, null, { flush: 'sync' })
 }
 
 // initial value for watchers to trigger on undefined initial values
@@ -159,27 +141,13 @@ export function watch<T = any, Immediate extends Readonly<boolean> = false>(
   cb: any,
   options?: WatchOptions<Immediate>,
 ): WatchStopHandle {
-  if (__DEV__ && !isFunction(cb)) {
-    warn(
-      `\`watch(fn, options?)\` signature has been moved to a separate API. ` +
-        `Use \`watchEffect(fn, options?)\` instead. \`watch\` now only ` +
-        `supports \`watch(source, cb, options?) signature.`,
-    )
-  }
   return doWatch(source as any, cb, options)
 }
 
 function doWatch(
   source: WatchSource | WatchSource[] | WatchEffect | object,
   cb: WatchCallback | null,
-  {
-    immediate,
-    deep,
-    flush,
-    once,
-    onTrack,
-    onTrigger,
-  }: WatchOptions = EMPTY_OBJ,
+  { immediate, deep, flush, once }: WatchOptions = EMPTY_OBJ,
 ): WatchStopHandle {
   if (cb && once) {
     const _cb = cb
@@ -188,45 +156,6 @@ function doWatch(
       unwatch()
     }
   }
-
-  // TODO remove in 3.5
-  if (__DEV__ && deep !== void 0 && typeof deep === 'number') {
-    warn(
-      `watch() "deep" option with number value will be used as watch depth in future versions. ` +
-        `Please use a boolean instead to avoid potential breakage.`,
-    )
-  }
-
-  if (__DEV__ && !cb) {
-    if (immediate !== undefined) {
-      warn(
-        `watch() "immediate" option is only respected when using the ` +
-          `watch(source, callback, options?) signature.`,
-      )
-    }
-    if (deep !== undefined) {
-      warn(
-        `watch() "deep" option is only respected when using the ` +
-          `watch(source, callback, options?) signature.`,
-      )
-    }
-    if (once !== undefined) {
-      warn(
-        `watch() "once" option is only respected when using the ` +
-          `watch(source, callback, options?) signature.`,
-      )
-    }
-  }
-
-  const warnInvalidSource = (s: unknown) => {
-    warn(
-      `Invalid watch source: `,
-      s,
-      `A watch source can only be a getter/effect function, a ref, ` +
-        `a reactive object, or an array of these types.`,
-    )
-  }
-
   const instance = currentInstance
   const reactiveGetter = (source: object) =>
     deep === true
@@ -255,8 +184,6 @@ function doWatch(
           return reactiveGetter(s)
         } else if (isFunction(s)) {
           return callWithErrorHandling(s, instance, ErrorCodes.WATCH_GETTER)
-        } else {
-          __DEV__ && warnInvalidSource(s)
         }
       })
   } else if (isFunction(source)) {
@@ -280,7 +207,6 @@ function doWatch(
     }
   } else {
     getter = NOOP
-    __DEV__ && warnInvalidSource(source)
   }
 
   // 2.x array mutation watch compat
@@ -314,25 +240,6 @@ function doWatch(
   // in SSR there is no need to setup an actual effect, and it should be noop
   // unless it's eager or sync flush
   let ssrCleanup: (() => void)[] | undefined
-  if (__SSR__ && isInSSRComponentSetup) {
-    // we will also not call the invalidate callback (+ runner is not set up)
-    onCleanup = NOOP
-    if (!cb) {
-      getter()
-    } else if (immediate) {
-      callWithAsyncErrorHandling(cb, instance, ErrorCodes.WATCH_CALLBACK, [
-        getter(),
-        isMultiSource ? [] : undefined,
-        onCleanup,
-      ])
-    }
-    if (flush === 'sync') {
-      const ctx = useSSRContext()!
-      ssrCleanup = ctx.__watcherHandles || (ctx.__watcherHandles = [])
-    } else {
-      return NOOP
-    }
-  }
 
   let oldValue: any = isMultiSource
     ? new Array((source as []).length).fill(INITIAL_WATCHER_VALUE)
@@ -384,7 +291,7 @@ function doWatch(
   if (flush === 'sync') {
     scheduler = job as any // the scheduler function gets called directly
   } else if (flush === 'post') {
-    scheduler = () => queuePostRenderEffect(job, instance && instance.suspense)
+    scheduler = () => queuePostRenderEffect(job)
   } else {
     // default: 'pre'
     job.pre = true
@@ -402,11 +309,6 @@ function doWatch(
     }
   }
 
-  if (__DEV__) {
-    effect.onTrack = onTrack
-    effect.onTrigger = onTrigger
-  }
-
   // initial run
   if (cb) {
     if (immediate) {
@@ -415,10 +317,7 @@ function doWatch(
       oldValue = effect.run()
     }
   } else if (flush === 'post') {
-    queuePostRenderEffect(
-      effect.run.bind(effect),
-      instance && instance.suspense,
-    )
+    queuePostRenderEffect(effect.run.bind(effect))
   } else {
     effect.run()
   }

@@ -77,13 +77,6 @@ function normalizeContainer(
   return container as any
 }
 
-// Custom element support
-export {
-  defineCustomElement,
-  VueElement,
-  type VueElementConstructor,
-} from './apiCustomElement'
-
 // SFC CSS utilities
 export { useCssModule } from './helpers/useCssModule'
 export { useCssVars } from './helpers/useCssVars'

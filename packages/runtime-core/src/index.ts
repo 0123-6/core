@@ -104,8 +104,6 @@ export { Fragment, Text, Comment, Static, type VNodeRef } from './vnode'
 export { KeepAlive, type KeepAliveProps } from './components/KeepAlive'
 // For using custom directives
 export { withDirectives } from './directives'
-// SSR context
-export { useSSRContext, ssrContextKey } from './helpers/useSsrContext'
 
 // Custom Renderer API ---------------------------------------------------------
 
@@ -129,7 +127,6 @@ export {
 } from './helpers/resolveAssets'
 // For integration with runtime compiler
 export { registerRuntimeCompiler, isRuntimeOnly } from './component'
-export { initCustomFormatter } from './customFormatter'
 
 import { ErrorTypeStrings as _ErrorTypeStrings } from './errorHandling'
 /**
@@ -255,9 +252,7 @@ export type {
   RendererElement,
   RendererOptions,
   RootRenderFunction,
-  ElementNamespace,
 } from './renderer'
-export type { RootHydrateFunction } from './hydration'
 export type { Slot, Slots, SlotsType } from './componentSlots'
 export type {
   Prop,
@@ -280,7 +275,6 @@ export type {
   AsyncComponentOptions,
   AsyncComponentLoader,
 } from './apiAsyncComponent'
-export type { HMRRuntime } from './hmr'
 
 // Internal API ----------------------------------------------------------------
 

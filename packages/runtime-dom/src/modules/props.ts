@@ -15,12 +15,11 @@ export function patchDOMProp(
   // unmounted.
   prevChildren: any,
   parentComponent: any,
-  parentSuspense: any,
   unmountChildren: any,
 ) {
   if (key === 'innerHTML' || key === 'textContent') {
     if (prevChildren) {
-      unmountChildren(prevChildren, parentComponent, parentSuspense)
+      unmountChildren(prevChildren, parentComponent)
     }
     el[key] = value == null ? '' : value
     return

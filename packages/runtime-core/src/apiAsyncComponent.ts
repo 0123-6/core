@@ -4,7 +4,6 @@ import {
   type ComponentOptions,
   type ConcreteComponent,
   currentInstance,
-  isInSSRComponentSetup,
 } from './component'
 import { isFunction, isObject } from '@vue/shared'
 import type { ComponentPublicInstance } from './componentPublicInstance'
@@ -54,7 +53,6 @@ export function defineAsyncComponent<
     errorComponent,
     delay = 200,
     timeout, // undefined = never times out
-    suspensible = true,
     onError: userOnError,
   } = source
 
@@ -137,26 +135,6 @@ export function defineAsyncComponent<
           ErrorCodes.ASYNC_COMPONENT_LOADER,
           !errorComponent /* do not throw in dev if user provided error component */,
         )
-      }
-
-      // suspense-controlled or SSR.
-      if (
-        (__FEATURE_SUSPENSE__ && suspensible && instance.suspense) ||
-        (__SSR__ && isInSSRComponentSetup)
-      ) {
-        return load()
-          .then(comp => {
-            return () => createInnerComp(comp, instance)
-          })
-          .catch(err => {
-            onError(err)
-            return () =>
-              errorComponent
-                ? createVNode(errorComponent as ConcreteComponent, {
-                    error: err,
-                  })
-                : null
-          })
       }
 
       const loaded = ref(false)

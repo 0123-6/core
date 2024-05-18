@@ -39,10 +39,8 @@ import {
   mergeOptions,
 } from '../componentOptions'
 import type { ComponentPublicInstance } from '../componentPublicInstance'
-import { devtoolsInitApp, devtoolsUnmountApp } from '../devtools'
 import type { Directive } from '../directives'
 import { nextTick } from '../scheduler'
-import { version } from '..'
 import {
   type LegacyConfig,
   installLegacyConfigWarnings,
@@ -562,9 +560,6 @@ function installCompatMount(
       app._container = container
       // for devtools and telemetry
       ;(container as any).__vue_app__ = app
-      if (__DEV__ || __FEATURE_PROD_DEVTOOLS__) {
-        devtoolsInitApp(app, version)
-      }
 
       return instance.proxy!
     }
@@ -572,9 +567,6 @@ function installCompatMount(
     instance.ctx._compat_destroy = () => {
       if (isMounted) {
         render(null, app._container)
-        if (__DEV__ || __FEATURE_PROD_DEVTOOLS__) {
-          devtoolsUnmountApp(app)
-        }
         delete app._container.__vue_app__
       } else {
         const { bum, scope, um } = instance

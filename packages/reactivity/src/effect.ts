@@ -115,6 +115,7 @@ export class ReactiveEffect<T = any> {
       activeEffect = this
       this._runnings++
       preCleanupEffect(this)
+      // 真正调用的函数
       return this.fn()
     } finally {
       postCleanupEffect(this)
@@ -257,8 +258,12 @@ export function pauseScheduling() {
   pauseScheduleStack++
 }
 
+/**
+ * 恢复处理程序
+ */
 export function resetScheduling() {
   pauseScheduleStack--
+  // 从queueEffectSchedulers取出1个并执行
   while (!pauseScheduleStack && queueEffectSchedulers.length) {
     queueEffectSchedulers.shift()!()
   }
@@ -286,8 +291,15 @@ export function trackEffect(
   }
 }
 
+// 全局待处理队列
 const queueEffectSchedulers: EffectScheduler[] = []
 
+/**
+ * 触发更新
+ * @param dep
+ * @param dirtyLevel
+ * @param debuggerEventExtraInfo
+ */
 export function triggerEffects(
   dep: Dep,
   dirtyLevel: DirtyLevels,
@@ -311,6 +323,7 @@ export function triggerEffects(
       if (__DEV__) {
         effect.onTrigger?.(extend({ effect }, debuggerEventExtraInfo))
       }
+      // 触发更新
       effect.trigger()
       if (
         (!effect._runnings || effect.allowRecurse) &&
@@ -318,6 +331,7 @@ export function triggerEffects(
       ) {
         effect._shouldSchedule = false
         if (effect.scheduler) {
+          // 将处理程序放入待处理队列中
           queueEffectSchedulers.push(effect.scheduler)
         }
       }

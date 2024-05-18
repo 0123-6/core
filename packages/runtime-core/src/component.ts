@@ -72,7 +72,6 @@ import {
   isPromise,
   makeMap,
 } from '@vue/shared'
-import type { SuspenseBoundary } from './components/Suspense'
 import type { CompilerOptions } from '@vue/compiler-core'
 import { markAttrsAccessed } from './componentRenderUtils'
 import { currentRenderingInstance } from './componentRenderContext'
@@ -295,11 +294,6 @@ export interface ComponentInternalInstance {
    */
   render: InternalRenderFunction | null
   /**
-   * SSR render function
-   * @internal
-   */
-  ssrRender?: Function | null
-  /**
    * Object containing values this component provides for its descendants
    * @internal
    */
@@ -422,17 +416,6 @@ export interface ComponentInternalInstance {
    * @internal
    */
   setupContext: SetupContext | null
-
-  /**
-   * suspense related
-   * @internal
-   */
-  suspense: SuspenseBoundary | null
-  /**
-   * suspense pending batch id
-   * @internal
-   */
-  suspenseId: number
   /**
    * @internal
    */
@@ -540,7 +523,6 @@ let uid = 0
 export function createComponentInstance(
   vnode: VNode,
   parent: ComponentInternalInstance | null,
-  suspense: SuspenseBoundary | null,
 ) {
   const type = vnode.type as ConcreteComponent
   // inherit parent app context - or - if root, adopt from root vnode
@@ -599,9 +581,6 @@ export function createComponentInstance(
     attrsProxy: null,
     slotsProxy: null,
 
-    // suspense related
-    suspense,
-    suspenseId: suspense ? suspense.pendingId : 0,
     asyncDep: null,
     asyncResolved: false,
 
@@ -817,24 +796,6 @@ function setupStatefulComponent(
           .catch(e => {
             handleError(e, instance, ErrorCodes.SETUP_FUNCTION)
           })
-      } else if (__FEATURE_SUSPENSE__) {
-        // async setup returned Promise.
-        // bail here and wait for re-entry.
-        instance.asyncDep = setupResult
-        if (__DEV__ && !instance.suspense) {
-          const name = Component.name ?? 'Anonymous'
-          warn(
-            `Component <${name}>: setup function returned a promise, but no ` +
-              `<Suspense> boundary was found in the parent component tree. ` +
-              `A component with async setup() must be nested in a <Suspense> ` +
-              `in order to be rendered.`,
-          )
-        }
-      } else if (__DEV__) {
-        warn(
-          `setup() returned a Promise, but the version of Vue you are using ` +
-            `does not support it yet.`,
-        )
       }
     } else {
       handleSetupResult(instance, setupResult, isSSR)
@@ -850,14 +811,7 @@ export function handleSetupResult(
   isSSR: boolean,
 ) {
   if (isFunction(setupResult)) {
-    // setup returned an inline render function
-    if (__SSR__ && (instance.type as ComponentOptions).__ssrInlineRender) {
-      // when the function's name is `ssrRender` (compiled by SFC inline mode),
-      // set it as ssrRender instead.
-      instance.ssrRender = setupResult
-    } else {
-      instance.render = setupResult as InternalRenderFunction
-    }
+    instance.render = setupResult as InternalRenderFunction
   } else if (isObject(setupResult)) {
     if (__DEV__ && isVNode(setupResult)) {
       warn(

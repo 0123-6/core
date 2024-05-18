@@ -1,4 +1,3 @@
-import type { SuspenseBoundary } from './components/Suspense'
 import type { VNode, VNodeNormalizedRef, VNodeNormalizedRefAtom } from './vnode'
 import {
   EMPTY_OBJ,
@@ -23,7 +22,6 @@ import { queuePostRenderEffect } from './renderer'
 export function setRef(
   rawRef: VNodeNormalizedRef,
   oldRawRef: VNodeNormalizedRef | null,
-  parentSuspense: SuspenseBoundary | null,
   vnode: VNode,
   isUnmount = false,
 ) {
@@ -32,7 +30,6 @@ export function setRef(
       setRef(
         r,
         oldRawRef && (isArray(oldRawRef) ? oldRawRef[i] : oldRawRef),
-        parentSuspense,
         vnode,
         isUnmount,
       ),
@@ -123,7 +120,7 @@ export function setRef(
         // null values means this is unmount and it should not overwrite another
         // ref with the same key
         ;(doSet as SchedulerJob).id = -1
-        queuePostRenderEffect(doSet, parentSuspense)
+        queuePostRenderEffect(doSet)
       } else {
         doSet()
       }

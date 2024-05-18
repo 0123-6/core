@@ -351,6 +351,8 @@ export function isProxy(value: any): boolean {
  * const reactiveFoo = reactive(foo)
  *
  * console.log(toRaw(reactiveFoo) === foo) // true
+ * 返回被Proxy代理的原始对象。绕过proxy，避免性能浪费。
+ *
  * ```
  *
  * @param observed - The object for which the "raw" value is requested.

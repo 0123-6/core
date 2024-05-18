@@ -1,10 +1,11 @@
+// vModel.ts是Vue指令v-model的实现文件
+
 import {
   type DirectiveBinding,
   type DirectiveHook,
   type ObjectDirective,
   type VNode,
   nextTick,
-  warn,
 } from '@vue/runtime-core'
 import { addEventListener } from '../modules/events'
 import {
@@ -210,28 +211,23 @@ export const vModelSelect: ModelDirective<HTMLSelectElement> = {
   },
   // set value in mounted & updated because <select> relies on its children
   // <option>s.
-  mounted(el, { value, modifiers: { number } }) {
-    setSelected(el, value, number)
+  mounted(el, { value }) {
+    setSelected(el, value)
   },
   beforeUpdate(el, _binding, vnode) {
     el[assignKey] = getModelAssigner(vnode)
   },
-  updated(el, { value, modifiers: { number } }) {
+  updated(el, { value }) {
     if (!el._assigning) {
-      setSelected(el, value, number)
+      setSelected(el, value)
     }
   },
 }
 
-function setSelected(el: HTMLSelectElement, value: any, number: boolean) {
+function setSelected(el: HTMLSelectElement, value: any) {
   const isMultiple = el.multiple
   const isArrayValue = isArray(value)
   if (isMultiple && !isArrayValue && !isSet(value)) {
-    __DEV__ &&
-      warn(
-        `<select multiple v-model> expects an Array or Set value for its binding, ` +
-          `but got ${Object.prototype.toString.call(value).slice(8, -1)}.`,
-      )
     return
   }
 
@@ -322,44 +318,4 @@ function callModelHook(
   )
   const fn = modelToUse[hook] as DirectiveHook
   fn && fn(el, binding, vnode, prevVNode)
-}
-
-// SSR vnode transforms, only used when user includes client-oriented render
-// function in SSR
-export function initVModelForSSR() {
-  vModelText.getSSRProps = ({ value }) => ({ value })
-
-  vModelRadio.getSSRProps = ({ value }, vnode) => {
-    if (vnode.props && looseEqual(vnode.props.value, value)) {
-      return { checked: true }
-    }
-  }
-
-  vModelCheckbox.getSSRProps = ({ value }, vnode) => {
-    if (isArray(value)) {
-      if (vnode.props && looseIndexOf(value, vnode.props.value) > -1) {
-        return { checked: true }
-      }
-    } else if (isSet(value)) {
-      if (vnode.props && value.has(vnode.props.value)) {
-        return { checked: true }
-      }
-    } else if (value) {
-      return { checked: true }
-    }
-  }
-
-  vModelDynamic.getSSRProps = (binding, vnode) => {
-    if (typeof vnode.type !== 'string') {
-      return
-    }
-    const modelToUse = resolveDynamicModel(
-      // resolveDynamicModel expects an uppercase tag name, but vnode.type is lowercase
-      vnode.type.toUpperCase(),
-      vnode.props && vnode.props.type,
-    )
-    if (modelToUse.getSSRProps) {
-      return modelToUse.getSSRProps(binding, vnode)
-    }
-  }
 }

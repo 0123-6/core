@@ -19,12 +19,10 @@ import { type Directive, validateDirectiveName } from './directives'
 import type { ElementNamespace, RootRenderFunction } from './renderer'
 import type { InjectionKey } from './apiInject'
 import { warn } from './warning'
-import { type VNode, cloneVNode, createVNode } from './vnode'
+import { createVNode } from './vnode'
 import type { RootHydrateFunction } from './hydration'
-import { devtoolsInitApp, devtoolsUnmountApp } from './devtools'
 import { NO, extend, isFunction, isObject } from '@vue/shared'
 import { version } from '.'
-import { installAppCompatProperties } from './compat/global'
 import type { NormalizedPropsOptions } from './componentProps'
 import type { ObjectEmitsOptions } from './componentEmits'
 import type { DefineComponent } from './apiDefineComponent'
@@ -169,6 +167,9 @@ export type Plugin<Options = any[]> =
   | FunctionPlugin<Options>
   | ObjectPlugin<Options>
 
+/**
+ * 创建context
+ */
 export function createAppContext(): AppContext {
   return {
     app: null as any,
@@ -198,11 +199,19 @@ export type CreateAppFunction<HostElement> = (
 
 let uid = 0
 
+/**
+ * createAppAPI的函数实现
+ * @param render
+ * @param hydrate
+ */
 export function createAppAPI<HostElement>(
   render: RootRenderFunction<HostElement>,
   hydrate?: RootHydrateFunction,
 ): CreateAppFunction<HostElement> {
+  // 返回此函数，最外层ensureRenderer().createApp()即是调用此方法
+  // 组件的构造参数传递给rootComponent
   return function createApp(rootComponent, rootProps = null) {
+    // 如果rootComponent不是函数的话,复制一份，避免操作源对象
     if (!isFunction(rootComponent)) {
       rootComponent = extend({}, rootComponent)
     }
@@ -211,10 +220,11 @@ export function createAppAPI<HostElement>(
       __DEV__ && warn(`root props passed to app.mount() must be an object.`)
       rootProps = null
     }
-
+    // 创建上下文对象context
     const context = createAppContext()
+    // 已安装的插件
     const installedPlugins = new WeakSet()
-
+    // 是否已绑定到实际DOM
     let isMounted = false
 
     const app: App = (context.app = {
@@ -302,77 +312,34 @@ export function createAppAPI<HostElement>(
         return app
       },
 
+      // 定义了一个mount方法，但最终会被重写，为什么呢？为什么不一次性定义好呢？？？
       mount(
-        rootContainer: HostElement,
-        isHydrate?: boolean,
-        namespace?: boolean | ElementNamespace,
+        rootContainer: HostElement, // 要绑定到的实际DOM元素
       ): any {
-        if (!isMounted) {
-          // #5571
-          if (__DEV__ && (rootContainer as any).__vue_app__) {
-            warn(
-              `There is already an app instance mounted on the host container.\n` +
-                ` If you want to mount another app on the same host container,` +
-                ` you need to unmount the previous app by calling \`app.unmount()\` first.`,
-            )
-          }
-          const vnode = createVNode(rootComponent, rootProps)
-          // store app context on the root VNode.
-          // this will be set on the root instance on initial mount.
-          vnode.appContext = context
-
-          if (namespace === true) {
-            namespace = 'svg'
-          } else if (namespace === false) {
-            namespace = undefined
-          }
-
-          // HMR root reload
-          if (__DEV__) {
-            context.reload = () => {
-              // casting to ElementNamespace because TS doesn't guarantee type narrowing
-              // over function boundaries
-              render(
-                cloneVNode(vnode),
-                rootContainer,
-                namespace as ElementNamespace,
-              )
-            }
-          }
-
-          if (isHydrate && hydrate) {
-            hydrate(vnode as VNode<Node, Element>, rootContainer as any)
-          } else {
-            render(vnode, rootContainer, namespace)
-          }
-          isMounted = true
-          app._container = rootContainer
-          // for devtools and telemetry
-          ;(rootContainer as any).__vue_app__ = app
-
-          if (__DEV__ || __FEATURE_PROD_DEVTOOLS__) {
-            app._instance = vnode.component
-            devtoolsInitApp(app, version)
-          }
-
-          return getExposeProxy(vnode.component!) || vnode.component!.proxy
-        } else if (__DEV__) {
-          warn(
-            `App has already been mounted.\n` +
-              `If you want to remount the same app, move your app creation logic ` +
-              `into a factory function and create fresh app instances for each ` +
-              `mount - e.g. \`const createMyApp = () => createApp(App)\``,
-          )
+        // 如果已经绑定
+        if (isMounted) {
+          console.error('已经绑定了，请检查')
+          return
         }
+        // 获取vnode实例，参数为vue组件
+        const vnode = createVNode(rootComponent, rootProps)
+        // store app context on the root VNode.
+        // this will be set on the root instance on initial mount.
+        vnode.appContext = context
+
+        // 将vnode渲染到实际DOM上
+        render(vnode, rootContainer)
+        // 设置已渲染标记为true
+        isMounted = true
+        // app._container保存着vm对应的实际DOM
+        app._container = rootContainer
+
+        return getExposeProxy(vnode.component!) || vnode.component!.proxy
       },
 
       unmount() {
         if (isMounted) {
           render(null, app._container)
-          if (__DEV__ || __FEATURE_PROD_DEVTOOLS__) {
-            app._instance = null
-            devtoolsUnmountApp(app)
-          }
           delete app._container.__vue_app__
         } else if (__DEV__) {
           warn(`Cannot unmount an app that is not mounted.`)
@@ -402,10 +369,6 @@ export function createAppAPI<HostElement>(
         }
       },
     })
-
-    if (__COMPAT__) {
-      installAppCompatProperties(app, context, render)
-    }
 
     return app
   }

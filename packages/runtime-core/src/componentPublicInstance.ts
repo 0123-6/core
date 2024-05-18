@@ -288,6 +288,7 @@ if (__COMPAT__) {
   installCompatInstanceProperties(publicPropertiesMap)
 }
 
+// 类型定义,其中data为2
 enum AccessTypes {
   OTHER,
   SETUP,
@@ -306,12 +307,23 @@ export const isReservedPrefix = (key: string) => key === '_' || key === '$'
 const hasSetupBinding = (state: Data, key: string) =>
   state !== EMPTY_OBJ && !state.__isScriptSetup && hasOwn(state, key)
 
+/**
+ * 公共实例，即vm，的代理的handler定义
+ */
 export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
+  /**
+   * get拦截器
+   * @param instance 从vm为ComponentRenderContext类型，
+   * 从中获得vm原本的对象，即未绑定DOM的原始的vm实例
+   * @param key 要访问的属性
+   */
   get({ _: instance }: ComponentRenderContext, key: string) {
+    // 特殊属性不处理
     if (key === ReactiveFlags.SKIP) {
       return true
     }
 
+    // 解构instance对象
     const { ctx, setupState, data, props, accessCache, type, appContext } =
       instance
 
@@ -329,11 +341,14 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
     let normalizedProps
     if (key[0] !== '$') {
       const n = accessCache![key]
+      // 如果n存在
       if (n !== undefined) {
         switch (n) {
           case AccessTypes.SETUP:
             return setupState[key]
+          // data()为2
           case AccessTypes.DATA:
+            // 返回instance.data[key],但data本身也是proxy，需要调用它的handler方法
             return data[key]
           case AccessTypes.CONTEXT:
             return ctx[key]
@@ -427,12 +442,14 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
     }
   },
 
+  // set拦截器
   set(
     { _: instance }: ComponentRenderContext,
     key: string,
     value: any,
   ): boolean {
     const { data, setupState, ctx } = instance
+    // 如果setupState有key属性
     if (hasSetupBinding(setupState, key)) {
       setupState[key] = value
       return true
@@ -444,7 +461,10 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
       warn(`Cannot mutate <script setup> binding "${key}" from Options API.`)
       return false
     } else if (data !== EMPTY_OBJ && hasOwn(data, key)) {
+      // 选项式data存在，而且有这个key属性,设置data[key]=value，
+      // 进入proxy的拦截器，执行操作
       data[key] = value
+      // 返回true代表设置成功
       return true
     } else if (hasOwn(instance.props, key)) {
       __DEV__ && warn(`Attempting to mutate prop "${key}". Props are readonly.`)
@@ -468,9 +488,11 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
         ctx[key] = value
       }
     }
+    // 返回true代表设置成功
     return true
   },
 
+  // has拦截器
   has(
     {
       _: { data, setupState, accessCache, ctx, appContext, propsOptions },
@@ -489,6 +511,7 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
     )
   },
 
+  // defineProperty拦截器
   defineProperty(
     target: ComponentRenderContext,
     key: string,

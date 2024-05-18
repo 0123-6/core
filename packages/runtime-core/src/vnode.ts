@@ -12,47 +12,24 @@ import {
   normalizeClass,
   normalizeStyle,
 } from '@vue/shared'
-import {
-  type ClassComponent,
-  type Component,
-  type ComponentInternalInstance,
-  type ConcreteComponent,
-  type Data,
-  isClassComponent,
+import type {
+  ClassComponent,
+  Component,
+  ComponentInternalInstance,
+  ConcreteComponent,
+  Data,
 } from './component'
 import type { RawSlots } from './componentSlots'
-import {
-  type ReactiveFlags,
-  type Ref,
-  isProxy,
-  isRef,
-  toRaw,
-} from '@vue/reactivity'
+import { type ReactiveFlags, type Ref, isProxy, isRef } from '@vue/reactivity'
 import type { AppContext } from './apiCreateApp'
-import {
-  type Suspense,
-  type SuspenseBoundary,
-  type SuspenseImpl,
-  isSuspense,
-} from './components/Suspense'
 import type { DirectiveBinding } from './directives'
-import type { TransitionHooks } from './components/BaseTransition'
-import { warn } from './warning'
-import {
-  type Teleport,
-  type TeleportImpl,
-  isTeleport,
-} from './components/Teleport'
 import {
   currentRenderingInstance,
   currentScopeId,
 } from './componentRenderContext'
 import type { RendererElement, RendererNode } from './renderer'
-import { NULL_DYNAMIC_COMPONENT } from './helpers/resolveAssets'
+import type { NULL_DYNAMIC_COMPONENT } from './helpers/resolveAssets'
 import { hmrDirtyComponents } from './hmr'
-import { convertLegacyComponent } from './compat/component'
-import { convertLegacyVModelProps } from './compat/componentVModel'
-import { defineLegacyVNodeProperties } from './compat/renderFn'
 import { ErrorCodes, callWithAsyncErrorHandling } from './errorHandling'
 import type { ComponentPublicInstance } from './componentPublicInstance'
 import { isInternalObject } from './internalObject'
@@ -75,10 +52,6 @@ export type VNodeTypes =
   | typeof Static
   | typeof Comment
   | typeof Fragment
-  | typeof Teleport
-  | typeof TeleportImpl
-  | typeof Suspense
-  | typeof SuspenseImpl
 
 export type VNodeRef =
   | string
@@ -177,7 +150,6 @@ export interface VNode<
   children: VNodeNormalizedChildren
   component: ComponentInternalInstance | null
   dirs: DirectiveBinding[] | null
-  transition: TransitionHooks<HostElement> | null
 
   // DOM
   el: HostNode | null
@@ -190,8 +162,6 @@ export interface VNode<
    */
   staticCount: number
 
-  // suspense
-  suspense: SuspenseBoundary | null
   /**
    * @internal
    */
@@ -395,16 +365,6 @@ export function transformVNodeArgs(transformer?: typeof vnodeArgsTransformer) {
   vnodeArgsTransformer = transformer
 }
 
-const createVNodeWithArgsTransform = (
-  ...args: Parameters<typeof _createVNode>
-): VNode => {
-  return _createVNode(
-    ...(vnodeArgsTransformer
-      ? vnodeArgsTransformer(args, currentRenderingInstance)
-      : args),
-  )
-}
-
 const normalizeKey = ({ key }: VNodeProps): VNode['key'] =>
   key != null ? key : null
 
@@ -425,6 +385,17 @@ const normalizeRef = ({
   ) as any
 }
 
+/**
+ * 创建VNode
+ * @param type
+ * @param props
+ * @param children
+ * @param patchFlag
+ * @param dynamicProps
+ * @param shapeFlag
+ * @param isBlockNode
+ * @param needFullChildrenNormalization
+ */
 function createBaseVNode(
   type: VNodeTypes | ClassComponent | typeof NULL_DYNAMIC_COMPONENT,
   props: (Data & VNodeProps) | null = null,
@@ -466,21 +437,12 @@ function createBaseVNode(
 
   if (needFullChildrenNormalization) {
     normalizeChildren(vnode, children)
-    // normalize suspense children
-    if (__FEATURE_SUSPENSE__ && shapeFlag & ShapeFlags.SUSPENSE) {
-      ;(type as typeof SuspenseImpl).normalize(vnode)
-    }
   } else if (children) {
     // compiled element vnode - if children is passed, only possible types are
     // string or Array.
     vnode.shapeFlag |= isString(children)
       ? ShapeFlags.TEXT_CHILDREN
       : ShapeFlags.ARRAY_CHILDREN
-  }
-
-  // validate key
-  if (__DEV__ && vnode.key !== vnode.key) {
-    warn(`VNode created with invalid key (NaN). VNode type:`, vnode.type)
   }
 
   // track vnode for block tree
@@ -502,20 +464,23 @@ function createBaseVNode(
     currentBlock.push(vnode)
   }
 
-  if (__COMPAT__) {
-    convertLegacyVModelProps(vnode)
-    defineLegacyVNodeProperties(vnode)
-  }
-
   return vnode
 }
 
 export { createBaseVNode as createElementVNode }
 
-export const createVNode = (
-  __DEV__ ? createVNodeWithArgsTransform : _createVNode
-) as typeof _createVNode
+// 创建VNode
+export const createVNode = _createVNode as typeof _createVNode
 
+/**
+ * 创建VNode
+ * @param type 类型
+ * @param props 参数
+ * @param children
+ * @param patchFlag
+ * @param dynamicProps
+ * @param isBlockNode
+ */
 function _createVNode(
   type: VNodeTypes | ClassComponent | typeof NULL_DYNAMIC_COMPONENT,
   props: (Data & VNodeProps) | null = null,
@@ -524,13 +489,7 @@ function _createVNode(
   dynamicProps: string[] | null = null,
   isBlockNode = false,
 ): VNode {
-  if (!type || type === NULL_DYNAMIC_COMPONENT) {
-    if (__DEV__ && !type) {
-      warn(`Invalid vnode type when creating vnode: ${type}.`)
-    }
-    type = Comment
-  }
-
+  // 从这里开始,睡觉
   if (isVNode(type)) {
     // createVNode receiving an existing vnode. This happens in cases like
     // <component :is="vnode"/>
@@ -548,16 +507,6 @@ function _createVNode(
     }
     cloned.patchFlag |= PatchFlags.BAIL
     return cloned
-  }
-
-  // class component normalization.
-  if (isClassComponent(type)) {
-    type = type.__vccOpts
-  }
-
-  // 2.x async/functional component compat
-  if (__COMPAT__) {
-    type = convertLegacyComponent(type, currentRenderingInstance)
   }
 
   // class & style normalization.
@@ -579,30 +528,18 @@ function _createVNode(
   }
 
   // encode the vnode type information into a bitmap
+  // 值为4
   const shapeFlag = isString(type)
     ? ShapeFlags.ELEMENT
-    : __FEATURE_SUSPENSE__ && isSuspense(type)
+    : __FEATURE_SUSPENSE__ && false
       ? ShapeFlags.SUSPENSE
-      : isTeleport(type)
-        ? ShapeFlags.TELEPORT
-        : isObject(type)
-          ? ShapeFlags.STATEFUL_COMPONENT
-          : isFunction(type)
-            ? ShapeFlags.FUNCTIONAL_COMPONENT
-            : 0
+      : isObject(type)
+        ? ShapeFlags.STATEFUL_COMPONENT
+        : isFunction(type)
+          ? ShapeFlags.FUNCTIONAL_COMPONENT
+          : 0
 
-  if (__DEV__ && shapeFlag & ShapeFlags.STATEFUL_COMPONENT && isProxy(type)) {
-    type = toRaw(type)
-    warn(
-      `Vue received a Component that was made a reactive object. This can ` +
-        `lead to unnecessary performance overhead and should be avoided by ` +
-        `marking the component with \`markRaw\` or using \`shallowRef\` ` +
-        `instead of \`ref\`.`,
-      `\nComponent that was made reactive: `,
-      type,
-    )
-  }
-
+  // 创建VNode并返回
   return createBaseVNode(
     type,
     props,
@@ -628,7 +565,7 @@ export function cloneVNode<T, U>(
 ): VNode<T, U> {
   // This is intentionally NOT using spread or extend to avoid the runtime
   // key enumeration cost.
-  const { props, ref, patchFlag, children, transition } = vnode
+  const { props, ref, patchFlag, children } = vnode
   const mergedProps = extraProps ? mergeProps(props || {}, extraProps) : props
   const cloned: VNode<T, U> = {
     __v_isVNode: true,
@@ -671,31 +608,18 @@ export function cloneVNode<T, U>(
     dynamicChildren: vnode.dynamicChildren,
     appContext: vnode.appContext,
     dirs: vnode.dirs,
-    transition,
 
     // These should technically only be non-null on mounted VNodes. However,
     // they *should* be copied for kept-alive vnodes. So we just always copy
     // them since them being non-null during a mount doesn't affect the logic as
     // they will simply be overwritten.
     component: vnode.component,
-    suspense: vnode.suspense,
     ssContent: vnode.ssContent && cloneVNode(vnode.ssContent),
     ssFallback: vnode.ssFallback && cloneVNode(vnode.ssFallback),
     el: vnode.el,
     anchor: vnode.anchor,
     ctx: vnode.ctx,
     ce: vnode.ce,
-  }
-
-  // if the vnode will be replaced by the cloned one, it is necessary
-  // to clone the transition to ensure that the vnode referenced within
-  // the transition hooks is fresh.
-  if (transition && cloneTransition) {
-    cloned.transition = transition.clone(cloned as VNode)
-  }
-
-  if (__COMPAT__) {
-    defineLegacyVNodeProperties(cloned as VNode)
   }
 
   return cloned

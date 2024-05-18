@@ -33,18 +33,14 @@ import {
 } from '@vue/shared'
 import { watch } from '../apiWatch'
 import {
-  type ElementNamespace,
   MoveType,
   type RendererElement,
   type RendererInternals,
   type RendererNode,
   queuePostRenderEffect,
 } from '../renderer'
-import { setTransitionHooks } from './BaseTransition'
 import type { ComponentRenderContext } from '../componentPublicInstance'
-import { devtoolsComponentAdded } from '../devtools'
 import { isAsyncWrapper } from '../apiAsyncComponent'
-import { isSuspense } from './Suspense'
 import { LifecycleHooks } from '../enums'
 
 type MatchPattern = string | RegExp | (string | RegExp)[]
@@ -65,7 +61,6 @@ export interface KeepAliveContext extends ComponentRenderContext {
     vnode: VNode,
     container: RendererElement,
     anchor: RendererNode | null,
-    namespace: ElementNamespace,
     optimized: boolean,
   ) => void
   deactivate: (vnode: VNode) => void
@@ -114,8 +109,6 @@ const KeepAliveImpl: ComponentOptions = {
       ;(instance as any).__v_cache = cache
     }
 
-    const parentSuspense = instance.suspense
-
     const {
       renderer: {
         p: patch,
@@ -126,15 +119,9 @@ const KeepAliveImpl: ComponentOptions = {
     } = sharedContext
     const storageContainer = createElement('div')
 
-    sharedContext.activate = (
-      vnode,
-      container,
-      anchor,
-      namespace,
-      optimized,
-    ) => {
+    sharedContext.activate = (vnode, container, anchor, optimized) => {
       const instance = vnode.component!
-      move(vnode, container, anchor, MoveType.ENTER, parentSuspense)
+      move(vnode, container, anchor, MoveType.ENTER)
       // in case props have changed
       patch(
         instance.vnode,
@@ -142,8 +129,6 @@ const KeepAliveImpl: ComponentOptions = {
         container,
         anchor,
         instance,
-        parentSuspense,
-        namespace,
         vnode.slotScopeIds,
         optimized,
       )
@@ -156,17 +141,12 @@ const KeepAliveImpl: ComponentOptions = {
         if (vnodeHook) {
           invokeVNodeHook(vnodeHook, instance.parent, vnode)
         }
-      }, parentSuspense)
-
-      if (__DEV__ || __FEATURE_PROD_DEVTOOLS__) {
-        // Update components tree
-        devtoolsComponentAdded(instance)
-      }
+      })
     }
 
     sharedContext.deactivate = (vnode: VNode) => {
       const instance = vnode.component!
-      move(vnode, storageContainer, null, MoveType.LEAVE, parentSuspense)
+      move(vnode, storageContainer, null, MoveType.LEAVE)
       queuePostRenderEffect(() => {
         if (instance.da) {
           invokeArrayFns(instance.da)
@@ -176,18 +156,13 @@ const KeepAliveImpl: ComponentOptions = {
           invokeVNodeHook(vnodeHook, instance.parent, vnode)
         }
         instance.isDeactivated = true
-      }, parentSuspense)
-
-      if (__DEV__ || __FEATURE_PROD_DEVTOOLS__) {
-        // Update components tree
-        devtoolsComponentAdded(instance)
-      }
+      })
     }
 
     function unmount(vnode: VNode) {
       // reset the shapeFlag so it can be properly unmounted
       resetShapeFlag(vnode)
-      _unmount(vnode, instance, parentSuspense, true)
+      _unmount(vnode, instance, true)
     }
 
     function pruneCache(filter?: (name: string) => boolean) {
@@ -236,14 +211,14 @@ const KeepAliveImpl: ComponentOptions = {
 
     onBeforeUnmount(() => {
       cache.forEach(cached => {
-        const { subTree, suspense } = instance
+        const { subTree } = instance
         const vnode = getInnerChild(subTree)
         if (cached.type === vnode.type && cached.key === vnode.key) {
           // current instance will be unmounted as part of keep-alive's unmount
           resetShapeFlag(vnode)
           // but invoke its deactivated hook here
           const da = vnode.component!.da
-          da && queuePostRenderEffect(da, suspense)
+          da && queuePostRenderEffect(da)
           return
         }
         unmount(cached)
@@ -316,10 +291,6 @@ const KeepAliveImpl: ComponentOptions = {
         // copy over mounted state
         vnode.el = cachedVNode.el
         vnode.component = cachedVNode.component
-        if (vnode.transition) {
-          // recursively update transition hooks on subTree
-          setTransitionHooks(vnode, vnode.transition!)
-        }
         // avoid vnode being mounted as fresh
         vnode.shapeFlag |= ShapeFlags.COMPONENT_KEPT_ALIVE
         // make this key the freshest
@@ -336,7 +307,7 @@ const KeepAliveImpl: ComponentOptions = {
       vnode.shapeFlag |= ShapeFlags.COMPONENT_SHOULD_KEEP_ALIVE
 
       current = vnode
-      return isSuspense(rawVNode.type) ? rawVNode : vnode
+      return vnode
     }
   },
 }

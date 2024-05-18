@@ -99,6 +99,7 @@ export function queueJob(job: SchedulerJob) {
     } else {
       queue.splice(findInsertionIndex(job.id), 0, job)
     }
+    // 刷新queue
     queueFlush()
   }
 }
@@ -106,6 +107,7 @@ export function queueJob(job: SchedulerJob) {
 function queueFlush() {
   if (!isFlushing && !isFlushPending) {
     isFlushPending = true
+    // 将flushJobs加入异步任务队列中
     currentFlushPromise = resolvedPromise.then(flushJobs)
   }
 }
@@ -201,6 +203,7 @@ export function flushPostFlushCbs(seen?: CountMap) {
 const getId = (job: SchedulerJob): number =>
   job.id == null ? Infinity : job.id
 
+// 排序算法
 const comparator = (a: SchedulerJob, b: SchedulerJob): number => {
   const diff = getId(a) - getId(b)
   if (diff === 0) {

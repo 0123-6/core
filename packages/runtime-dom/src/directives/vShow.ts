@@ -45,21 +45,7 @@ export const vShow: ObjectDirective<VShowElement> & { name?: 'show' } = {
   },
 }
 
-if (__DEV__) {
-  vShow.name = 'show'
-}
-
 function setDisplay(el: VShowElement, value: unknown): void {
   el.style.display = value ? el[vShowOriginalDisplay] : 'none'
   el[vShowHidden] = !value
-}
-
-// SSR vnode transforms, only used when user includes client-oriented render
-// function in SSR
-export function initVShowForSSR() {
-  vShow.getSSRProps = ({ value }) => {
-    if (!value) {
-      return { style: { display: 'none' } }
-    }
-  }
 }

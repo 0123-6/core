@@ -101,14 +101,7 @@ export { createVNode, cloneVNode, mergeProps, isVNode } from './vnode'
 // VNode types
 export { Fragment, Text, Comment, Static, type VNodeRef } from './vnode'
 // Built-in components
-export { Teleport, type TeleportProps } from './components/Teleport'
-export { Suspense, type SuspenseProps } from './components/Suspense'
 export { KeepAlive, type KeepAliveProps } from './components/KeepAlive'
-export {
-  BaseTransition,
-  BaseTransitionPropsValidators,
-  type BaseTransitionProps,
-} from './components/BaseTransition'
 // For using custom directives
 export { withDirectives } from './directives'
 // SSR context
@@ -116,7 +109,7 @@ export { useSSRContext, ssrContextKey } from './helpers/useSsrContext'
 
 // Custom Renderer API ---------------------------------------------------------
 
-export { createRenderer, createHydrationRenderer } from './renderer'
+export { createRenderer } from './renderer'
 export { queuePostFlushCb } from './scheduler'
 import { warn as _warn } from './warning'
 export const warn = (__DEV__ ? _warn : NOOP) as typeof _warn
@@ -136,12 +129,6 @@ export {
 } from './helpers/resolveAssets'
 // For integration with runtime compiler
 export { registerRuntimeCompiler, isRuntimeOnly } from './component'
-export {
-  useTransitionState,
-  resolveTransitionHooks,
-  setTransitionHooks,
-  getTransitionRawChildren,
-} from './components/BaseTransition'
 export { initCustomFormatter } from './customFormatter'
 
 import { ErrorTypeStrings as _ErrorTypeStrings } from './errorHandling'
@@ -152,20 +139,6 @@ import { ErrorTypeStrings as _ErrorTypeStrings } from './errorHandling'
 export const ErrorTypeStrings = (
   __ESM_BUNDLER__ || __CJS__ || __DEV__ ? _ErrorTypeStrings : null
 ) as typeof _ErrorTypeStrings
-
-// For devtools
-import {
-  type DevtoolsHook,
-  devtools as _devtools,
-  setDevtoolsHook as _setDevtoolsHook,
-} from './devtools'
-
-export const devtools = (
-  __DEV__ || __ESM_BUNDLER__ ? _devtools : undefined
-) as DevtoolsHook
-export const setDevtoolsHook = (
-  __DEV__ || __ESM_BUNDLER__ ? _setDevtoolsHook : NOOP
-) as typeof _setDevtoolsHook
 
 // Types -----------------------------------------------------------------------
 
@@ -280,7 +253,6 @@ export type {
   Renderer,
   RendererNode,
   RendererElement,
-  HydrationRenderer,
   RendererOptions,
   RootRenderFunction,
   ElementNamespace,
@@ -304,11 +276,6 @@ export type {
   FunctionDirective,
   DirectiveArguments,
 } from './directives'
-export type { SuspenseBoundary } from './components/Suspense'
-export type {
-  TransitionState,
-  TransitionHooks,
-} from './components/BaseTransition'
 export type {
   AsyncComponentOptions,
   AsyncComponentLoader,

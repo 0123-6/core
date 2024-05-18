@@ -13,15 +13,13 @@ import {
   looseToNumber,
   toHandlerKey,
 } from '@vue/shared'
-import {
-  type ComponentInternalInstance,
-  type ComponentOptions,
-  type ConcreteComponent,
-  formatComponentName,
+import type {
+  ComponentInternalInstance,
+  ComponentOptions,
+  ConcreteComponent,
 } from './component'
 import { ErrorCodes, callWithAsyncErrorHandling } from './errorHandling'
 import { warn } from './warning'
-import { devtoolsComponentEmit } from './devtools'
 import type { AppContext } from './apiCreateApp'
 import { emit as compatInstanceEmit } from './compat/instanceEventEmitter'
 import {
@@ -136,28 +134,6 @@ export function emit(
     }
     if (number) {
       args = rawArgs.map(looseToNumber)
-    }
-  }
-
-  if (__DEV__ || __FEATURE_PROD_DEVTOOLS__) {
-    devtoolsComponentEmit(instance, event, args)
-  }
-
-  if (__DEV__) {
-    const lowerCaseEvent = event.toLowerCase()
-    if (lowerCaseEvent !== event && props[toHandlerKey(lowerCaseEvent)]) {
-      warn(
-        `Event "${lowerCaseEvent}" is emitted in component ` +
-          `${formatComponentName(
-            instance,
-            instance.type,
-          )} but the handler is registered for "${event}". ` +
-          `Note that HTML attributes are case-insensitive and you cannot use ` +
-          `v-on to listen to camelCase events when using in-DOM templates. ` +
-          `You should probably use "${hyphenate(
-            event,
-          )}" instead of "${event}".`,
-      )
     }
   }
 

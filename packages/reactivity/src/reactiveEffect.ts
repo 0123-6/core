@@ -15,6 +15,8 @@ import {
 // which maintains a Set of subscribers, but we simply store them as
 // raw Maps to reduce memory overhead.
 type KeyToDepMap = Map<any, Dep>
+// Vue3将依赖关系存储在这里，作为模块作用域的属性
+// Vue2是每一个属性持有一个Dep对象，在属性内部的dep对象上保存着订阅观察者的信息。
 const targetMap = new WeakMap<object, KeyToDepMap>()
 
 export const ITERATE_KEY = Symbol(__DEV__ ? 'iterate' : '')
@@ -25,12 +27,15 @@ export const MAP_KEY_ITERATE_KEY = Symbol(__DEV__ ? 'Map key iterate' : '')
  *
  * This will check which effect is running at the moment and record it as dep
  * which records all effects that depend on the reactive property.
+ * 收集依赖，如果存在观察者，那么说明观察者依赖这个属性。
  *
- * @param target - Object holding the reactive property.
- * @param type - Defines the type of access to the reactive property.
- * @param key - Identifier of the reactive property to track.
+ * @param target - 属性所在的对象
+ * @param type - 访问属性的类型，get
+ * @param key - 属性名称
  */
 export function track(target: object, type: TrackOpTypes, key: unknown) {
+  // 我从控制台改变的，此时shouldTrack为true，activeEffect为undefined
+  // 说明此时不存在观察者，追踪结束。
   if (shouldTrack && activeEffect) {
     let depsMap = targetMap.get(target)
     if (!depsMap) {
@@ -57,6 +62,7 @@ export function track(target: object, type: TrackOpTypes, key: unknown) {
 /**
  * Finds all deps associated with the target (or a specific property) and
  * triggers the effects stored within.
+ * 触发依赖的该属性的观察者，执行它们的update方法
  *
  * @param target - The reactive object.
  * @param type - Defines the type of the operation that needs to trigger effects.
@@ -70,12 +76,13 @@ export function trigger(
   oldValue?: unknown,
   oldTarget?: Map<unknown, unknown> | Set<unknown>,
 ) {
+  // 获取target对应的map
   const depsMap = targetMap.get(target)
   if (!depsMap) {
     // never been tracked
     return
   }
-
+  // 定义deps为[]
   let deps: (Dep | undefined)[] = []
   if (type === TriggerOpTypes.CLEAR) {
     // collection being cleared
@@ -91,6 +98,7 @@ export function trigger(
   } else {
     // schedule runs for SET | ADD | DELETE
     if (key !== void 0) {
+      // 将depsMap.get(key)得到的map添加到deps中
       deps.push(depsMap.get(key))
     }
 
@@ -122,10 +130,11 @@ export function trigger(
         break
     }
   }
-
+  // 暂停处理程序
   pauseScheduling()
   for (const dep of deps) {
     if (dep) {
+      // 触发依赖
       triggerEffects(
         dep,
         DirtyLevels.Dirty,
@@ -142,6 +151,7 @@ export function trigger(
       )
     }
   }
+  // 恢复处理程序
   resetScheduling()
 }
 

@@ -14,11 +14,7 @@ return withDirectives(h(comp), [
 import type { VNode } from './vnode'
 import { EMPTY_OBJ, isBuiltInDirective, isFunction } from '@vue/shared'
 import { warn } from './warning'
-import {
-  type ComponentInternalInstance,
-  type Data,
-  getExposeProxy,
-} from './component'
+import { type ComponentInternalInstance, getExposeProxy } from './component'
 import { currentRenderingInstance } from './componentRenderContext'
 import { ErrorCodes, callWithAsyncErrorHandling } from './errorHandling'
 import type { ComponentPublicInstance } from './componentPublicInstance'
@@ -42,11 +38,6 @@ export type DirectiveHook<T = any, Prev = VNode<any, T> | null, V = any> = (
   prevVNode: Prev,
 ) => void
 
-export type SSRDirectiveHook = (
-  binding: DirectiveBinding,
-  vnode: VNode,
-) => Data | undefined
-
 export interface ObjectDirective<T = any, V = any> {
   created?: DirectiveHook<T, null, V>
   beforeMount?: DirectiveHook<T, null, V>
@@ -55,7 +46,6 @@ export interface ObjectDirective<T = any, V = any> {
   updated?: DirectiveHook<T, VNode<any, T>, V>
   beforeUnmount?: DirectiveHook<T, null, V>
   unmounted?: DirectiveHook<T, null, V>
-  getSSRProps?: SSRDirectiveHook
   deep?: boolean
 }
 

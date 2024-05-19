@@ -318,39 +318,11 @@ export {
 // For test-utils
 export { transformVNodeArgs } from './vnode'
 
-// SSR -------------------------------------------------------------------------
-
-// **IMPORTANT** These APIs are exposed solely for @vue/server-renderer and may
-// change without notice between versions. User code should never rely on them.
-
-import { createComponentInstance, setupComponent } from './component'
-import { renderComponentRoot } from './componentRenderUtils'
-import { setCurrentRenderingInstance } from './componentRenderContext'
-import { isVNode, normalizeVNode } from './vnode'
-
-const _ssrUtils = {
-  createComponentInstance,
-  setupComponent,
-  renderComponentRoot,
-  setCurrentRenderingInstance,
-  isVNode,
-  normalizeVNode,
-}
-
-/**
- * SSR utils for \@vue/server-renderer. Only exposed in ssr-possible builds.
- * @internal
- */
-export const ssrUtils = (__SSR__ ? _ssrUtils : null) as typeof _ssrUtils
-
 // 2.x COMPAT ------------------------------------------------------------------
 
 import { DeprecationTypes as _DeprecationTypes } from './compat/compatConfig'
-export type { CompatVue } from './compat/global'
-export type { LegacyConfig } from './compat/globalConfig'
 
 import { warnDeprecation } from './compat/compatConfig'
-import { createCompatVue } from './compat/global'
 import {
   checkCompatEnabled,
   isCompatEnabled,
@@ -362,11 +334,10 @@ import { NOOP } from '@vue/shared'
 /**
  * @internal only exposed in compat builds
  */
-export const resolveFilter = __COMPAT__ ? _resolveFilter : null
+export const resolveFilter = null
 
 const _compatUtils = {
   warnDeprecation,
-  createCompatVue,
   isCompatEnabled,
   checkCompatEnabled,
   softAssertCompatEnabled,
@@ -376,9 +347,9 @@ const _compatUtils = {
  * @internal only exposed in compat builds.
  */
 export const compatUtils = (
-  __COMPAT__ ? _compatUtils : null
+  null
 ) as typeof _compatUtils
 
 export const DeprecationTypes = (
-  __COMPAT__ ? _DeprecationTypes : null
+  null
 ) as typeof _DeprecationTypes

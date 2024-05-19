@@ -1,4 +1,4 @@
-import { type DebuggerOptions, ReactiveEffect } from './effect'
+import { ReactiveEffect } from './effect'
 import { type Ref, trackRefValue, triggerRefValue } from './ref'
 import { NOOP, hasChanged, isFunction } from '@vue/shared'
 import { toRaw } from './reactive'
@@ -51,7 +51,6 @@ export class ComputedRefImpl<T> {
     private getter: ComputedGetter<T>,
     private readonly _setter: ComputedSetter<T>,
     isReadonly: boolean,
-    isSSR: boolean,
   ) {
     this.effect = new ReactiveEffect(
       () => getter(this._value),
@@ -64,7 +63,7 @@ export class ComputedRefImpl<T> {
         ),
     )
     this.effect.computed = this
-    this.effect.active = this._cacheable = !isSSR
+    this.effect.active = this._cacheable = true
     this[ReactiveFlags.IS_READONLY] = isReadonly
   }
 
@@ -132,21 +131,16 @@ export class ComputedRefImpl<T> {
  * ```
  *
  * @param getter - Function that produces the next value.
- * @param debugOptions - For debugging. See {@link https://vuejs.org/guide/extras/reactivity-in-depth.html#computed-debugging}.
  * @see {@link https://vuejs.org/api/reactivity-core.html#computed}
  */
 export function computed<T>(
   getter: ComputedGetter<T>,
-  debugOptions?: DebuggerOptions,
 ): ComputedRef<T>
 export function computed<T>(
   options: WritableComputedOptions<T>,
-  debugOptions?: DebuggerOptions,
 ): WritableComputedRef<T>
 export function computed<T>(
   getterOrOptions: ComputedGetter<T> | WritableComputedOptions<T>,
-  debugOptions?: DebuggerOptions,
-  isSSR = false,
 ) {
   let getter: ComputedGetter<T>
   let setter: ComputedSetter<T>
@@ -164,12 +158,7 @@ export function computed<T>(
     setter = getterOrOptions.set
   }
 
-  const cRef = new ComputedRefImpl(getter, setter, onlyGetter || !setter, isSSR)
-
-  if (__DEV__ && debugOptions && !isSSR) {
-    cRef.effect.onTrack = debugOptions.onTrack
-    cRef.effect.onTrigger = debugOptions.onTrigger
-  }
+  const cRef = new ComputedRefImpl(getter, setter, onlyGetter || !setter)
 
   return cRef as any
 }

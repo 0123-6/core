@@ -25,7 +25,6 @@ import {
   isCompatEnabled,
   warnDeprecation,
 } from './compat/compatConfig'
-import { shallowReadonly } from '@vue/reactivity'
 
 /**
  * dev only flag to track whether $attrs was used during render.
@@ -64,9 +63,6 @@ export function renderComponentRoot(
 
   let result
   let fallthroughAttrs
-  if (__DEV__) {
-    accessedAttrs = false
-  }
 
   try {
     if (vnode.shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {
@@ -75,25 +71,13 @@ export function renderComponentRoot(
       const proxyToUse = withProxy || proxy
       // 'this' isn't available in production builds with `<script setup>`,
       // so warn if it's used in dev.
-      const thisProxy =
-        __DEV__ && setupState.__isScriptSetup
-          ? new Proxy(proxyToUse!, {
-              get(target, key, receiver) {
-                warn(
-                  `Property '${String(
-                    key,
-                  )}' was accessed via 'this'. Avoid using 'this' in templates.`,
-                )
-                return Reflect.get(target, key, receiver)
-              },
-            })
-          : proxyToUse
+      const thisProxy = proxyToUse
       result = normalizeVNode(
         render!.call(
           thisProxy,
           proxyToUse!,
           renderCache,
-          __DEV__ ? shallowReadonly(props) : props,
+          props,
           setupState,
           data,
           ctx,
@@ -103,27 +87,14 @@ export function renderComponentRoot(
     } else {
       // functional
       const render = Component as FunctionalComponent
-      // in dev, mark attrs accessed if optional props (attrs === props)
-      if (__DEV__ && attrs === props) {
-        markAttrsAccessed()
-      }
       result = normalizeVNode(
         render.length > 1
           ? render(
-              __DEV__ ? shallowReadonly(props) : props,
-              __DEV__
-                ? {
-                    get attrs() {
-                      markAttrsAccessed()
-                      return shallowReadonly(attrs)
-                    },
-                    slots,
-                    emit,
-                  }
-                : { attrs, slots, emit },
+              props,
+              {attrs, slots, emit},
             )
           : render(
-              __DEV__ ? shallowReadonly(props) : props,
+              props,
               null as any /* we know it doesn't need it */,
             ),
       )

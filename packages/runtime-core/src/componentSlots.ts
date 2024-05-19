@@ -1,4 +1,4 @@
-import { type ComponentInternalInstance, currentInstance } from './component'
+import { type ComponentInternalInstance } from './component'
 import {
   type VNode,
   type VNodeChild,
@@ -93,17 +93,6 @@ const normalizeSlot = (
     return rawSlot as Slot
   }
   const normalized = withCtx((...args: any[]) => {
-    if (
-      __DEV__ &&
-      currentInstance &&
-      (!ctx || ctx.root === currentInstance.root)
-    ) {
-      warn(
-        `Slot "${key}" invoked outside of the render function: ` +
-          `this will not track dependencies used in the slot. ` +
-          `Invoke the slot function inside the render function instead.`,
-      )
-    }
     return normalizeSlotValue(rawSlot(...args))
   }, ctx) as Slot
   // NOT a compiled slot
@@ -123,18 +112,6 @@ const normalizeObjectSlots = (
     if (isFunction(value)) {
       slots[key] = normalizeSlot(key, value, ctx)
     } else if (value != null) {
-      if (
-        __DEV__ &&
-        !(
-          __COMPAT__ &&
-          isCompatEnabled(DeprecationTypes.RENDER_FUNCTION, instance)
-        )
-      ) {
-        warn(
-          `Non-function value encountered for slot "${key}". ` +
-            `Prefer function slots for better performance.`,
-        )
-      }
       const normalized = normalizeSlotValue(value)
       slots[key] = () => normalized
     }

@@ -18,7 +18,6 @@ import { type ComponentInternalInstance, getExposeProxy } from './component'
 import { currentRenderingInstance } from './componentRenderContext'
 import { ErrorCodes, callWithAsyncErrorHandling } from './errorHandling'
 import type { ComponentPublicInstance } from './componentPublicInstance'
-import { mapCompatDirectiveHook } from './compat/customDirective'
 import { pauseTracking, resetTracking } from '@vue/reactivity'
 import { traverse } from './apiWatch'
 
@@ -125,9 +124,6 @@ export function invokeDirectiveHook(
       binding.oldValue = oldBindings[i].value
     }
     let hook = binding.dir[name] as DirectiveHook | DirectiveHook[] | undefined
-    if (__COMPAT__ && !hook) {
-      hook = mapCompatDirectiveHook(name, binding.dir, instance)
-    }
     if (hook) {
       // disable tracking inside all lifecycle hooks
       // since they can potentially be called inside effects.

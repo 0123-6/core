@@ -272,7 +272,6 @@ export function resetScheduling() {
 export function trackEffect(
   effect: ReactiveEffect,
   dep: Dep,
-  debuggerEventExtraInfo?: DebuggerEventExtraInfo,
 ) {
   if (dep.get(effect) !== effect._trackId) {
     dep.set(effect, effect._trackId)
@@ -285,9 +284,6 @@ export function trackEffect(
     } else {
       effect._depsLength++
     }
-    if (__DEV__) {
-      effect.onTrack?.(extend({ effect }, debuggerEventExtraInfo!))
-    }
   }
 }
 
@@ -298,12 +294,10 @@ const queueEffectSchedulers: EffectScheduler[] = []
  * 触发更新
  * @param dep
  * @param dirtyLevel
- * @param debuggerEventExtraInfo
  */
 export function triggerEffects(
   dep: Dep,
   dirtyLevel: DirtyLevels,
-  debuggerEventExtraInfo?: DebuggerEventExtraInfo,
 ) {
   pauseScheduling()
   for (const effect of dep.keys()) {
@@ -320,9 +314,6 @@ export function triggerEffects(
       effect._shouldSchedule &&
       (tracking ??= dep.get(effect) === effect._trackId)
     ) {
-      if (__DEV__) {
-        effect.onTrigger?.(extend({ effect }, debuggerEventExtraInfo))
-      }
       // 触发更新
       effect.trigger()
       if (

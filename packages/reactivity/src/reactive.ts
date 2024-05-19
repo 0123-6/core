@@ -395,11 +395,8 @@ export function markRaw<T extends object>(value: T): Raw<T> {
 }
 
 /**
- * Returns a reactive proxy of the given value (if possible).
- *
- * If the given value is not an object, the original value itself is returned.
- *
- * @param value - The value for which a reactive proxy shall be created.
+ * 将参数响应式化，如果参数是对象的话，
+ * 如果是原始值，直接返回
  */
 export const toReactive = <T extends unknown>(value: T): T =>
   isObject(value) ? reactive(value) : value

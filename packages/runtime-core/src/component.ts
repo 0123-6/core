@@ -1,89 +1,71 @@
-import { type VNode, type VNodeChild, isVNode } from './vnode'
+import {isVNode, type VNode, type VNodeChild} from './vnode'
 import {
   EffectScope,
-  type ReactiveEffect,
-  TrackOpTypes,
   isRef,
   markRaw,
   pauseTracking,
   proxyRefs,
+  type ReactiveEffect,
   resetTracking,
   shallowReadonly,
   track,
+  TrackOpTypes,
 } from '@vue/reactivity'
 import {
   type ComponentPublicInstance,
   type ComponentPublicInstanceConstructor,
-  PublicInstanceProxyHandlers,
-  RuntimeCompiledPublicInstanceProxyHandlers,
   createDevRenderContext,
-  exposePropsOnRenderContext,
   exposeSetupStateOnRenderContext,
+  PublicInstanceProxyHandlers,
   publicPropertiesMap,
+  RuntimeCompiledPublicInstanceProxyHandlers,
 } from './componentPublicInstance'
 import {
   type ComponentPropsOptions,
-  type NormalizedPropsOptions,
   initProps,
+  type NormalizedPropsOptions,
   normalizePropsOptions,
 } from './componentProps'
-import {
-  type InternalSlots,
-  type Slots,
-  type SlotsType,
-  type UnwrapSlotsType,
-  initSlots,
-} from './componentSlots'
-import { warn } from './warning'
-import { ErrorCodes, callWithErrorHandling, handleError } from './errorHandling'
-import {
-  type AppConfig,
-  type AppContext,
-  createAppContext,
-} from './apiCreateApp'
-import { type Directive, validateDirectiveName } from './directives'
+import {initSlots, type InternalSlots, type Slots, type SlotsType, type UnwrapSlotsType,} from './componentSlots'
+import {warn} from './warning'
+import {callWithErrorHandling, ErrorCodes} from './errorHandling'
+import {type AppConfig, type AppContext, createAppContext,} from './apiCreateApp'
+import {type Directive} from './directives'
 import {
   type ComponentOptions,
   type ComputedOptions,
   type MergedComponentOptions,
   type MethodOptions,
-  applyOptions,
   resolveMergedOptions,
 } from './componentOptions'
 import {
+  emit,
   type EmitFn,
   type EmitsOptions,
   type EmitsToProps,
+  normalizeEmitsOptions,
   type ObjectEmitsOptions,
   type ShortEmitsToObject,
-  emit,
-  normalizeEmitsOptions,
 } from './componentEmits'
 import {
   EMPTY_OBJ,
-  type IfAny,
-  NOOP,
-  ShapeFlags,
   extend,
-  getGlobalThis,
+  type IfAny,
   isArray,
   isFunction,
   isObject,
   isPromise,
   makeMap,
+  NOOP,
+  ShapeFlags,
 } from '@vue/shared'
-import type { CompilerOptions } from '@vue/compiler-core'
-import { markAttrsAccessed } from './componentRenderUtils'
-import { currentRenderingInstance } from './componentRenderContext'
-import { endMeasure, startMeasure } from './profiling'
-import { convertLegacyRenderFn } from './compat/renderFn'
-import {
-  type CompatConfig,
-  globalCompatConfig,
-  validateCompatConfig,
-} from './compat/compatConfig'
-import type { SchedulerJob } from './scheduler'
-import type { LifecycleHooks } from './enums'
+import type {CompilerOptions} from '@vue/compiler-core'
+import {markAttrsAccessed} from './componentRenderUtils'
+import {currentRenderingInstance} from './componentRenderContext'
+import {endMeasure, startMeasure} from './profiling'
+import {type CompatConfig, globalCompatConfig} from './compat/compatConfig'
+import type {SchedulerJob} from './scheduler'
+import type {LifecycleHooks} from './enums'
 
 export type Data = Record<string, unknown>
 
@@ -628,51 +610,9 @@ export const getCurrentInstance: () => ComponentInternalInstance | null = () =>
 let internalSetCurrentInstance: (
   instance: ComponentInternalInstance | null,
 ) => void
-let setInSSRSetupState: (state: boolean) => void
 
-/**
- * The following makes getCurrentInstance() usage across multiple copies of Vue
- * work. Some cases of how this can happen are summarized in #7590. In principle
- * the duplication should be avoided, but in practice there are often cases
- * where the user is unable to resolve on their own, especially in complicated
- * SSR setups.
- *
- * Note this fix is technically incomplete, as we still rely on other singletons
- * for effectScope and global reactive dependency maps. However, it does make
- * some of the most common cases work. It also warns if the duplication is
- * found during browser execution.
- */
-if (__SSR__) {
-  type Setter = (v: any) => void
-  const g = getGlobalThis()
-  const registerGlobalSetter = (key: string, setter: Setter) => {
-    let setters: Setter[]
-    if (!(setters = g[key])) setters = g[key] = []
-    setters.push(setter)
-    return (v: any) => {
-      if (setters.length > 1) setters.forEach(set => set(v))
-      else setters[0](v)
-    }
-  }
-  internalSetCurrentInstance = registerGlobalSetter(
-    `__VUE_INSTANCE_SETTERS__`,
-    v => (currentInstance = v),
-  )
-  // also make `isInSSRComponentSetup` sharable across copies of Vue.
-  // this is needed in the SFC playground when SSRing async components, since
-  // we have to load both the runtime and the server-renderer from CDNs, they
-  // contain duplicated copies of Vue runtime code.
-  setInSSRSetupState = registerGlobalSetter(
-    `__VUE_SSR_SETTERS__`,
-    v => (isInSSRComponentSetup = v),
-  )
-} else {
-  internalSetCurrentInstance = i => {
-    currentInstance = i
-  }
-  setInSSRSetupState = v => {
-    isInSSRComponentSetup = v
-  }
+internalSetCurrentInstance = i => {
+  currentInstance = i
 }
 
 export const setCurrentInstance = (instance: ComponentInternalInstance) => {
@@ -707,64 +647,28 @@ export function isStatefulComponent(instance: ComponentInternalInstance) {
   return instance.vnode.shapeFlag & ShapeFlags.STATEFUL_COMPONENT
 }
 
-export let isInSSRComponentSetup = false
-
 export function setupComponent(
   instance: ComponentInternalInstance,
-  isSSR = false,
 ) {
-  isSSR && setInSSRSetupState(isSSR)
-
   const { props, children } = instance.vnode
   const isStateful = isStatefulComponent(instance)
-  initProps(instance, props, isStateful, isSSR)
+  initProps(instance, props, isStateful)
   initSlots(instance, children)
 
-  const setupResult = isStateful
-    ? setupStatefulComponent(instance, isSSR)
+  return isStateful
+    ? setupStatefulComponent(instance)
     : undefined
-
-  isSSR && setInSSRSetupState(false)
-  return setupResult
 }
 
 function setupStatefulComponent(
   instance: ComponentInternalInstance,
-  isSSR: boolean,
 ) {
   const Component = instance.type as ComponentOptions
 
-  if (__DEV__) {
-    if (Component.name) {
-      validateComponentName(Component.name, instance.appContext.config)
-    }
-    if (Component.components) {
-      const names = Object.keys(Component.components)
-      for (let i = 0; i < names.length; i++) {
-        validateComponentName(names[i], instance.appContext.config)
-      }
-    }
-    if (Component.directives) {
-      const names = Object.keys(Component.directives)
-      for (let i = 0; i < names.length; i++) {
-        validateDirectiveName(names[i])
-      }
-    }
-    if (Component.compilerOptions && isRuntimeOnly()) {
-      warn(
-        `"compilerOptions" is only supported when using a build of Vue that ` +
-          `includes the runtime compiler. Since you are using a runtime-only ` +
-          `build, the options should be passed via your build tool config instead.`,
-      )
-    }
-  }
   // 0. create render proxy property access cache
   instance.accessCache = Object.create(null)
   // 1. create public instance / render proxy
   instance.proxy = new Proxy(instance.ctx, PublicInstanceProxyHandlers)
-  if (__DEV__) {
-    exposePropsOnRenderContext(instance)
-  }
   // 2. call setup()
   const { setup } = Component
   if (setup) {
@@ -787,28 +691,17 @@ function setupStatefulComponent(
 
     if (isPromise(setupResult)) {
       setupResult.then(unsetCurrentInstance, unsetCurrentInstance)
-      if (isSSR) {
-        // return the promise so server-renderer can wait on it
-        return setupResult
-          .then((resolvedResult: unknown) => {
-            handleSetupResult(instance, resolvedResult, isSSR)
-          })
-          .catch(e => {
-            handleError(e, instance, ErrorCodes.SETUP_FUNCTION)
-          })
-      }
     } else {
-      handleSetupResult(instance, setupResult, isSSR)
+      handleSetupResult(instance, setupResult)
     }
   } else {
-    finishComponentSetup(instance, isSSR)
+    finishComponentSetup(instance)
   }
 }
 
 export function handleSetupResult(
   instance: ComponentInternalInstance,
   setupResult: unknown,
-  isSSR: boolean,
 ) {
   if (isFunction(setupResult)) {
     instance.render = setupResult as InternalRenderFunction
@@ -835,7 +728,7 @@ export function handleSetupResult(
       }`,
     )
   }
-  finishComponentSetup(instance, isSSR)
+  finishComponentSetup(instance)
 }
 
 type CompileFunction = (
@@ -864,25 +757,13 @@ export const isRuntimeOnly = () => !compile
 
 export function finishComponentSetup(
   instance: ComponentInternalInstance,
-  isSSR: boolean,
-  skipOptions?: boolean,
 ) {
   const Component = instance.type as ComponentOptions
-
-  if (__COMPAT__) {
-    convertLegacyRenderFn(instance)
-
-    if (__DEV__ && Component.compatConfig) {
-      validateCompatConfig(Component.compatConfig)
-    }
-  }
 
   // template / render function normalization
   // could be already set when returned from setup()
   if (!instance.render) {
-    // only do on-the-fly compile if not in SSR - SSR on-the-fly compilation
-    // is done by server-renderer
-    if (!isSSR && compile && !Component.render) {
+    if (compile && !Component.render) {
       const template =
         (__COMPAT__ &&
           instance.vnode.props &&
@@ -928,39 +809,6 @@ export function finishComponentSetup(
     // also only allows a whitelist of globals to fallthrough.
     if (installWithProxy) {
       installWithProxy(instance)
-    }
-  }
-
-  // support for 2.x options
-  if (__FEATURE_OPTIONS_API__ && !(__COMPAT__ && skipOptions)) {
-    const reset = setCurrentInstance(instance)
-    pauseTracking()
-    try {
-      applyOptions(instance)
-    } finally {
-      resetTracking()
-      reset()
-    }
-  }
-
-  // warn missing template/render
-  // the runtime compilation of template in SSR is done by server-render
-  if (__DEV__ && !Component.render && instance.render === NOOP && !isSSR) {
-    /* istanbul ignore if */
-    if (!compile && Component.template) {
-      warn(
-        `Component provided template option but ` +
-          `runtime compilation is not supported in this build of Vue.` +
-          (__ESM_BUNDLER__
-            ? ` Configure your bundler to alias "vue" to "vue/dist/vue.esm-bundler.js".`
-            : __ESM_BROWSER__
-              ? ` Use "vue.esm-browser.js" instead.`
-              : __GLOBAL__
-                ? ` Use "vue.global.js" instead.`
-                : ``) /* should not happen */,
-      )
-    } else {
-      warn(`Component is missing template or render function.`)
     }
   }
 }

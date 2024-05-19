@@ -1,36 +1,17 @@
-import {
-  type ComponentInternalInstance,
-  type Data,
-  getExposeProxy,
-  isStatefulComponent,
-} from './component'
-import { nextTick, queueJob } from './scheduler'
-import {
-  type WatchOptions,
-  type WatchStopHandle,
-  instanceWatch,
-} from './apiWatch'
+import {type ComponentInternalInstance, type Data, getExposeProxy, isStatefulComponent,} from './component'
+import {nextTick, queueJob} from './scheduler'
+import {instanceWatch, type WatchOptions, type WatchStopHandle,} from './apiWatch'
 import {
   EMPTY_OBJ,
+  extend,
+  hasOwn,
   type IfAny,
+  isGloballyAllowed,
   NOOP,
   type Prettify,
   type UnionToIntersection,
-  extend,
-  hasOwn,
-  isFunction,
-  isGloballyAllowed,
-  isString,
 } from '@vue/shared'
-import {
-  ReactiveFlags,
-  type ShallowUnwrapRef,
-  TrackOpTypes,
-  type UnwrapNestedRefs,
-  shallowReadonly,
-  toRaw,
-  track,
-} from '@vue/reactivity'
+import {ReactiveFlags, type ShallowUnwrapRef, toRaw, track, TrackOpTypes, type UnwrapNestedRefs,} from '@vue/reactivity'
 import {
   type ComponentInjectOptions,
   type ComponentOptionsBase,
@@ -45,12 +26,10 @@ import {
   resolveMergedOptions,
   shouldCacheAccess,
 } from './componentOptions'
-import type { EmitFn, EmitsOptions } from './componentEmits'
-import type { SlotsType, UnwrapSlotsType } from './componentSlots'
-import { markAttrsAccessed } from './componentRenderUtils'
-import { currentRenderingInstance } from './componentRenderContext'
-import { warn } from './warning'
-import { installCompatInstanceProperties } from './compat/instance'
+import type {EmitFn, EmitsOptions} from './componentEmits'
+import type {SlotsType, UnwrapSlotsType} from './componentSlots'
+import {warn} from './warning'
+import {installCompatInstanceProperties} from './compat/instance'
 
 /**
  * Custom properties added to component instances in any way and can be accessed through `this`
@@ -266,10 +245,10 @@ export const publicPropertiesMap: PublicPropertiesMap =
     $: i => i,
     $el: i => i.vnode.el,
     $data: i => i.data,
-    $props: i => (__DEV__ ? shallowReadonly(i.props) : i.props),
-    $attrs: i => (__DEV__ ? shallowReadonly(i.attrs) : i.attrs),
-    $slots: i => (__DEV__ ? shallowReadonly(i.slots) : i.slots),
-    $refs: i => (__DEV__ ? shallowReadonly(i.refs) : i.refs),
+    $props: i => (i.props),
+    $attrs: i => (i.attrs),
+    $slots: i => (i.slots),
+    $refs: i => (i.refs),
     $parent: i => getPublicInstance(i.parent),
     $root: i => getPublicInstance(i.root),
     $emit: i => i.emit,
@@ -328,9 +307,7 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
       instance
 
     // for internal formatters to know that this is a Vue instance
-    if (__DEV__ && key === '__isVue') {
-      return true
-    }
+
 
     // data / props / ctx
     // This getter gets called for every property access on the render context
@@ -384,10 +361,6 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
     if (publicGetter) {
       if (key === '$attrs') {
         track(instance.attrs, TrackOpTypes.GET, '')
-        __DEV__ && markAttrsAccessed()
-      } else if (__DEV__ && key === '$slots') {
-        // for HMR only
-        track(instance, TrackOpTypes.GET, key)
       }
       return publicGetter(instance)
     } else if (
@@ -405,40 +378,7 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
       ((globalProperties = appContext.config.globalProperties),
       hasOwn(globalProperties, key))
     ) {
-      if (__COMPAT__) {
-        const desc = Object.getOwnPropertyDescriptor(globalProperties, key)!
-        if (desc.get) {
-          return desc.get.call(instance.proxy)
-        } else {
-          const val = globalProperties[key]
-          return isFunction(val)
-            ? Object.assign(val.bind(instance.proxy), val)
-            : val
-        }
-      } else {
-        return globalProperties[key]
-      }
-    } else if (
-      __DEV__ &&
-      currentRenderingInstance &&
-      (!isString(key) ||
-        // #1091 avoid internal isRef/isVNode checks on component instance leading
-        // to infinite warning loop
-        key.indexOf('__v') !== 0)
-    ) {
-      if (data !== EMPTY_OBJ && isReservedPrefix(key[0]) && hasOwn(data, key)) {
-        warn(
-          `Property ${JSON.stringify(
-            key,
-          )} must be accessed via $data because it starts with a reserved ` +
-            `character ("$" or "_") and is not proxied on the render context.`,
-        )
-      } else if (instance === currentRenderingInstance) {
-        warn(
-          `Property ${JSON.stringify(key)} was accessed during render ` +
-            `but is not defined on instance.`,
-        )
-      }
+      return globalProperties[key]
     }
   },
 
@@ -453,40 +393,21 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
     if (hasSetupBinding(setupState, key)) {
       setupState[key] = value
       return true
-    } else if (
-      __DEV__ &&
-      setupState.__isScriptSetup &&
-      hasOwn(setupState, key)
-    ) {
-      warn(`Cannot mutate <script setup> binding "${key}" from Options API.`)
-      return false
-    } else if (data !== EMPTY_OBJ && hasOwn(data, key)) {
-      // 选项式data存在，而且有这个key属性,设置data[key]=value，
-      // 进入proxy的拦截器，执行操作
-      data[key] = value
-      // 返回true代表设置成功
-      return true
-    } else if (hasOwn(instance.props, key)) {
-      __DEV__ && warn(`Attempting to mutate prop "${key}". Props are readonly.`)
-      return false
+    } else {
+      if (data !== EMPTY_OBJ && hasOwn(data, key)) {
+        // 选项式data存在，而且有这个key属性,设置data[key]=value，
+        // 进入proxy的拦截器，执行操作
+        data[key] = value
+        // 返回true代表设置成功
+        return true
+      } else if (hasOwn(instance.props, key)) {
+        return false
+      }
     }
     if (key[0] === '$' && key.slice(1) in instance) {
-      __DEV__ &&
-        warn(
-          `Attempting to mutate public property "${key}". ` +
-            `Properties starting with $ are reserved and readonly.`,
-        )
       return false
     } else {
-      if (__DEV__ && key in instance.appContext.config.globalProperties) {
-        Object.defineProperty(ctx, key, {
-          enumerable: true,
-          configurable: true,
-          value,
-        })
-      } else {
-        ctx[key] = value
-      }
+      ctx[key] = value
     }
     // 返回true代表设置成功
     return true
@@ -527,16 +448,6 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
   },
 }
 
-if (__DEV__ && !__TEST__) {
-  PublicInstanceProxyHandlers.ownKeys = (target: ComponentRenderContext) => {
-    warn(
-      `Avoid app logic that relies on enumerating keys on a component instance. ` +
-        `The keys will be empty in production mode to avoid performance overhead.`,
-    )
-    return Reflect.ownKeys(target)
-  }
-}
-
 export const RuntimeCompiledPublicInstanceProxyHandlers = /*#__PURE__*/ extend(
   {},
   PublicInstanceProxyHandlers,
@@ -549,15 +460,7 @@ export const RuntimeCompiledPublicInstanceProxyHandlers = /*#__PURE__*/ extend(
       return PublicInstanceProxyHandlers.get!(target, key, target)
     },
     has(_: ComponentRenderContext, key: string) {
-      const has = key[0] !== '_' && !isGloballyAllowed(key)
-      if (__DEV__ && !has && PublicInstanceProxyHandlers.has!(_, key)) {
-        warn(
-          `Property ${JSON.stringify(
-            key,
-          )} should not start with _ which is a reserved prefix for Vue internals.`,
-        )
-      }
-      return has
+      return key[0] !== '_' && !isGloballyAllowed(key)
     },
   },
 )

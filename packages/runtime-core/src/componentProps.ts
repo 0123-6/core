@@ -1,7 +1,6 @@
 import {
   TriggerOpTypes,
   shallowReactive,
-  shallowReadonly,
   toRaw,
   trigger,
 } from '@vue/reactivity'
@@ -11,7 +10,6 @@ import {
   type IfAny,
   PatchFlags,
   camelize,
-  capitalize,
   extend,
   hasOwn,
   hyphenate,
@@ -20,11 +18,8 @@ import {
   isObject,
   isOn,
   isReservedProp,
-  isString,
   makeMap,
-  toRawType,
 } from '@vue/shared'
-import { warn } from './warning'
 import {
   type ComponentInternalInstance,
   type ComponentOptions,
@@ -190,7 +185,6 @@ export function initProps(
   instance: ComponentInternalInstance,
   rawProps: Data | null,
   isStateful: number, // result of bitwise flag comparison
-  isSSR = false,
 ) {
   const props: Data = {}
   const attrs: Data = createInternalObject()
@@ -206,14 +200,9 @@ export function initProps(
     }
   }
 
-  // validation
-  if (__DEV__) {
-    validateProps(rawProps || {}, props, instance)
-  }
-
   if (isStateful) {
     // stateful
-    instance.props = isSSR ? props : shallowReactive(props)
+    instance.props = shallowReactive(props)
   } else {
     if (!instance.type.props) {
       // functional w/ optional props, props === attrs
@@ -224,13 +213,6 @@ export function initProps(
     }
   }
   instance.attrs = attrs
-}
-
-function isInHmrContext(instance: ComponentInternalInstance | null) {
-  while (instance) {
-    if (instance.type.__hmrId) return true
-    instance = instance.parent
-  }
 }
 
 export function updateProps(
@@ -252,7 +234,6 @@ export function updateProps(
     // always force full diff in dev
     // - #1942 if hmr is enabled with sfc component
     // - vite#872 non-sfc component used by sfc component
-    !(__DEV__ && isInHmrContext(instance)) &&
     (optimized || patchFlag > 0) &&
     !(patchFlag & PatchFlags.FULL_PROPS)
   ) {
@@ -360,10 +341,6 @@ export function updateProps(
   // trigger updates for $attrs in case it's used in component slots
   if (hasAttrsChanged) {
     trigger(instance.attrs, TriggerOpTypes.SET, '')
-  }
-
-  if (__DEV__) {
-    validateProps(rawProps || {}, props, instance)
   }
 }
 
@@ -543,18 +520,12 @@ export function normalizePropsOptions(
 
   if (isArray(raw)) {
     for (let i = 0; i < raw.length; i++) {
-      if (__DEV__ && !isString(raw[i])) {
-        warn(`props must be strings when using array syntax.`, raw[i])
-      }
       const normalizedKey = camelize(raw[i])
       if (validatePropName(normalizedKey)) {
         normalized[normalizedKey] = EMPTY_OBJ
       }
     }
   } else if (raw) {
-    if (__DEV__ && !isObject(raw)) {
-      warn(`invalid props options`, raw)
-    }
     for (const key in raw) {
       const normalizedKey = camelize(key)
       if (validatePropName(normalizedKey)) {
@@ -584,12 +555,7 @@ export function normalizePropsOptions(
 }
 
 function validatePropName(key: string) {
-  if (key[0] !== '$' && !isReservedProp(key)) {
-    return true
-  } else if (__DEV__) {
-    warn(`Invalid prop name: "${key}" is a reserved property.`)
-  }
-  return false
+  return key[0] !== '$' && !isReservedProp(key);
 }
 
 // use function string name to check type constructors
@@ -629,170 +595,6 @@ function getTypeIndex(
   }
   return -1
 }
-
-/**
- * dev only
- */
-function validateProps(
-  rawProps: Data,
-  props: Data,
-  instance: ComponentInternalInstance,
-) {
-  const resolvedValues = toRaw(props)
-  const options = instance.propsOptions[0]
-  for (const key in options) {
-    let opt = options[key]
-    if (opt == null) continue
-    validateProp(
-      key,
-      resolvedValues[key],
-      opt,
-      __DEV__ ? shallowReadonly(resolvedValues) : resolvedValues,
-      !hasOwn(rawProps, key) && !hasOwn(rawProps, hyphenate(key)),
-    )
-  }
-}
-
-/**
- * dev only
- */
-function validateProp(
-  name: string,
-  value: unknown,
-  prop: PropOptions,
-  props: Data,
-  isAbsent: boolean,
-) {
-  const { type, required, validator, skipCheck } = prop
-  // required!
-  if (required && isAbsent) {
-    warn('Missing required prop: "' + name + '"')
-    return
-  }
-  // missing but optional
-  if (value == null && !required) {
-    return
-  }
-  // type check
-  if (type != null && type !== true && !skipCheck) {
-    let isValid = false
-    const types = isArray(type) ? type : [type]
-    const expectedTypes = []
-    // value is valid as long as one of the specified types match
-    for (let i = 0; i < types.length && !isValid; i++) {
-      const { valid, expectedType } = assertType(value, types[i])
-      expectedTypes.push(expectedType || '')
-      isValid = valid
-    }
-    if (!isValid) {
-      warn(getInvalidTypeMessage(name, value, expectedTypes))
-      return
-    }
-  }
-  // custom validator
-  if (validator && !validator(value, props)) {
-    warn('Invalid prop: custom validator check failed for prop "' + name + '".')
-  }
-}
-
-const isSimpleType = /*#__PURE__*/ makeMap(
+makeMap(
   'String,Number,Boolean,Function,Symbol,BigInt',
-)
-
-type AssertionResult = {
-  valid: boolean
-  expectedType: string
-}
-
-/**
- * dev only
- */
-function assertType(value: unknown, type: PropConstructor): AssertionResult {
-  let valid
-  const expectedType = getType(type)
-  if (isSimpleType(expectedType)) {
-    const t = typeof value
-    valid = t === expectedType.toLowerCase()
-    // for primitive wrapper objects
-    if (!valid && t === 'object') {
-      valid = value instanceof type
-    }
-  } else if (expectedType === 'Object') {
-    valid = isObject(value)
-  } else if (expectedType === 'Array') {
-    valid = isArray(value)
-  } else if (expectedType === 'null') {
-    valid = value === null
-  } else {
-    valid = value instanceof type
-  }
-  return {
-    valid,
-    expectedType,
-  }
-}
-
-/**
- * dev only
- */
-function getInvalidTypeMessage(
-  name: string,
-  value: unknown,
-  expectedTypes: string[],
-): string {
-  if (expectedTypes.length === 0) {
-    return (
-      `Prop type [] for prop "${name}" won't match anything.` +
-      ` Did you mean to use type Array instead?`
-    )
-  }
-  let message =
-    `Invalid prop: type check failed for prop "${name}".` +
-    ` Expected ${expectedTypes.map(capitalize).join(' | ')}`
-  const expectedType = expectedTypes[0]
-  const receivedType = toRawType(value)
-  const expectedValue = styleValue(value, expectedType)
-  const receivedValue = styleValue(value, receivedType)
-  // check if we need to specify expected value
-  if (
-    expectedTypes.length === 1 &&
-    isExplicable(expectedType) &&
-    !isBoolean(expectedType, receivedType)
-  ) {
-    message += ` with value ${expectedValue}`
-  }
-  message += `, got ${receivedType} `
-  // check if we need to specify received value
-  if (isExplicable(receivedType)) {
-    message += `with value ${receivedValue}.`
-  }
-  return message
-}
-
-/**
- * dev only
- */
-function styleValue(value: unknown, type: string): string {
-  if (type === 'String') {
-    return `"${value}"`
-  } else if (type === 'Number') {
-    return `${Number(value)}`
-  } else {
-    return `${value}`
-  }
-}
-
-/**
- * dev only
- */
-function isExplicable(type: string): boolean {
-  const explicitTypes = ['string', 'number', 'boolean']
-  return explicitTypes.some(elem => type.toLowerCase() === elem)
-}
-
-/**
- * dev only
- */
-function isBoolean(...args: string[]): boolean {
-  return args.some(elem => elem.toLowerCase() === 'boolean')
-}
+);

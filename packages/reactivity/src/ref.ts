@@ -5,7 +5,7 @@ import {
   trackEffect,
   triggerEffects,
 } from './effect'
-import { DirtyLevels, TrackOpTypes, TriggerOpTypes } from './constants'
+import { DirtyLevels } from './constants'
 import {
   type IfAny,
   hasChanged,
@@ -45,7 +45,12 @@ type RefBase<T> = {
   value: T
 }
 
+/**
+ * 追踪该依赖，如果此时有观察者，将观察者的依赖数组添加当前ref对象。
+ * @param ref 正在被读取的RefImpl对象。
+ */
 export function trackRefValue(ref: RefBase<any>) {
+  // 如果应该被追踪和此时存在观察者
   if (shouldTrack && activeEffect) {
     ref = toRaw(ref)
     trackEffect(
@@ -54,45 +59,32 @@ export function trackRefValue(ref: RefBase<any>) {
         () => (ref.dep = undefined),
         ref instanceof ComputedRefImpl ? ref : undefined,
       )),
-      __DEV__
-        ? {
-            target: ref,
-            type: TrackOpTypes.GET,
-            key: 'value',
-          }
-        : void 0,
-    )
-  }
-}
-
-export function triggerRefValue(
-  ref: RefBase<any>,
-  dirtyLevel: DirtyLevels = DirtyLevels.Dirty,
-  newVal?: any,
-) {
-  ref = toRaw(ref)
-  const dep = ref.dep
-  if (dep) {
-    triggerEffects(
-      dep,
-      dirtyLevel,
-      __DEV__
-        ? {
-            target: ref,
-            type: TriggerOpTypes.SET,
-            key: 'value',
-            newValue: newVal,
-          }
-        : void 0,
     )
   }
 }
 
 /**
- * Checks if a value is a ref object.
- *
- * @param r - The value to inspect.
- * @see {@link https://vuejs.org/api/reactivity-utilities.html#isref}
+ * 触发ref的所有订阅者
+ * @param ref
+ * @param dirtyLevel
+ */
+export function triggerRefValue(
+  ref: RefBase<any>,
+  dirtyLevel: DirtyLevels = DirtyLevels.Dirty,
+) {
+  // 获取ref的原始值,原始值存放在__v_raw属性上
+  ref = toRaw(ref)
+  if (ref.dep) {
+    // 触发更新
+    triggerEffects(
+      ref.dep,
+      dirtyLevel,
+    )
+  }
+}
+
+/**
+ * 判断传入的参数是否为ref对象
  */
 export function isRef<T>(r: Ref<T> | unknown): r is Ref<T>
 export function isRef(r: any): r is Ref {
@@ -102,6 +94,9 @@ export function isRef(r: any): r is Ref {
 /**
  * Takes an inner value and returns a reactive and mutable ref object, which
  * has a single property `.value` that points to the inner value.
+ * 参数为原始值，返回响应式的对象，这个对象有1个属性value，指向原始值。
+ * // ref是createRef()的包装器，对应shallow为false
+ * // shallowRef()同样是createRef()的包装器，对应shallow为true
  *
  * @param value - The object to wrap in the ref.
  * @see {@link https://vuejs.org/api/reactivity-core.html#ref}
@@ -145,41 +140,68 @@ export function shallowRef(value?: unknown) {
   return createRef(value, true)
 }
 
+/**
+ * 创建ref函数，createRef()为一个工厂函数，用于创建RefImpl类的实例对象
+ * @param rawValue 原始值
+ * @param shallow 是否是浅层响应式
+ */
 function createRef(rawValue: unknown, shallow: boolean) {
+  // 如果传入的参数已经是ref对象，直接返回
   if (isRef(rawValue)) {
     return rawValue
   }
+  // new一个RefImpl对象并返回
   return new RefImpl(rawValue, shallow)
 }
 
+/**
+ * Ref类的定义
+ */
 class RefImpl<T> {
+  // 私有属性_value
   private _value: T
+  // 私有属性_rawValue
   private _rawValue: T
 
+  // 该ref对象作为一个依赖，dep保存着订阅该依赖的观察者数组
   public dep?: Dep = undefined
+  // 标识符，表明是ref对象
   public readonly __v_isRef = true
 
+  // 构造函数
   constructor(
     value: T,
     public readonly __v_isShallow: boolean,
   ) {
+    // 如果是浅层的话，啥也不做，呜呜呜
+    // 获取参数的原始值
     this._rawValue = __v_isShallow ? value : toRaw(value)
+    // 将传入的参数响应式化
     this._value = __v_isShallow ? value : toReactive(value)
   }
 
+  // value并不是实际的属性，而是一对getter,setter
   get value() {
+    // 追踪
+    // count.value,this为count，也就是RefImpl的实例对象
     trackRefValue(this)
+    // 返回真正的value值
     return this._value
   }
 
   set value(newVal) {
+    // 使用直接的值？？？
     const useDirectValue =
       this.__v_isShallow || isShallow(newVal) || isReadonly(newVal)
+    // 获取参数的原始值
     newVal = useDirectValue ? newVal : toRaw(newVal)
+    // 如果新值和旧值不一样
     if (hasChanged(newVal, this._rawValue)) {
+      // 重新设置_rawValue和_value
       this._rawValue = newVal
       this._value = useDirectValue ? newVal : toReactive(newVal)
-      triggerRefValue(this, DirtyLevels.Dirty, newVal)
+      // 触发所有订阅了此ref的观察者对象
+      triggerRefValue(this, DirtyLevels.Dirty)
     }
   }
 }
@@ -210,7 +232,7 @@ class RefImpl<T> {
  * @see {@link https://vuejs.org/api/reactivity-advanced.html#triggerref}
  */
 export function triggerRef(ref: Ref) {
-  triggerRefValue(ref, DirtyLevels.Dirty, __DEV__ ? ref.value : void 0)
+  triggerRefValue(ref, DirtyLevels.Dirty)
 }
 
 export type MaybeRef<T = any> = T | Ref<T>

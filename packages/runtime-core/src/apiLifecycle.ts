@@ -1,7 +1,6 @@
 import {
   type ComponentInternalInstance,
   currentInstance,
-  isInSSRComponentSetup,
   setCurrentInstance,
 } from './component'
 import type { ComponentPublicInstance } from './componentPublicInstance'
@@ -70,7 +69,6 @@ export const createHook =
   <T extends Function = () => any>(lifecycle: LifecycleHooks) =>
   (hook: T, target: ComponentInternalInstance | null = currentInstance) =>
     // post-create lifecycle registrations are noops during SSR (except for serverPrefetch)
-    (!isInSSRComponentSetup || lifecycle === LifecycleHooks.SERVER_PREFETCH) &&
     injectHook(lifecycle, (...args: unknown[]) => hook(...args), target)
 
 export const onBeforeMount = createHook(LifecycleHooks.BEFORE_MOUNT)

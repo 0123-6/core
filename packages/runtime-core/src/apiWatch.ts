@@ -35,8 +35,6 @@ import {
   callWithErrorHandling,
 } from './errorHandling'
 import { queuePostRenderEffect } from './renderer'
-import { DeprecationTypes } from './compat/compatConfig'
-import { checkCompatEnabled, isCompatEnabled } from './compat/compatConfig'
 import type { ObjectWatchOptionItem } from './componentOptions'
 
 export type WatchEffect = (onCleanup: OnCleanup) => void
@@ -209,21 +207,6 @@ function doWatch(
     getter = NOOP
   }
 
-  // 2.x array mutation watch compat
-  if (__COMPAT__ && cb && !deep) {
-    const baseGetter = getter
-    getter = () => {
-      const val = baseGetter()
-      if (
-        isArray(val) &&
-        checkCompatEnabled(DeprecationTypes.WATCH_ARRAY, instance)
-      ) {
-        traverse(val)
-      }
-      return val
-    }
-  }
-
   if (cb && deep) {
     const baseGetter = getter
     getter = () => traverse(baseGetter())
@@ -236,10 +219,6 @@ function doWatch(
       cleanup = effect.onStop = undefined
     }
   }
-
-  // in SSR there is no need to setup an actual effect, and it should be noop
-  // unless it's eager or sync flush
-  let ssrCleanup: (() => void)[] | undefined
 
   let oldValue: any = isMultiSource
     ? new Array((source as []).length).fill(INITIAL_WATCHER_VALUE)
@@ -256,10 +235,7 @@ function doWatch(
         forceTrigger ||
         (isMultiSource
           ? (newValue as any[]).some((v, i) => hasChanged(v, oldValue[i]))
-          : hasChanged(newValue, oldValue)) ||
-        (__COMPAT__ &&
-          isArray(newValue) &&
-          isCompatEnabled(DeprecationTypes.WATCH_ARRAY, instance))
+          : hasChanged(newValue, oldValue))
       ) {
         // cleanup before running cb again
         if (cleanup) {
@@ -321,8 +297,6 @@ function doWatch(
   } else {
     effect.run()
   }
-
-  if (__SSR__ && ssrCleanup) ssrCleanup.push(unwatch)
   return unwatch
 }
 

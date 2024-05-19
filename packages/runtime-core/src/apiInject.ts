@@ -2,7 +2,6 @@ import { isFunction } from '@vue/shared'
 import { currentInstance } from './component'
 import { currentRenderingInstance } from './componentRenderContext'
 import { currentApp } from './apiCreateApp'
-import { warn } from './warning'
 
 export interface InjectionKey<T> extends Symbol {}
 
@@ -11,9 +10,6 @@ export function provide<T, K = InjectionKey<T> | string | number>(
   value: K extends InjectionKey<infer V> ? V : T,
 ) {
   if (!currentInstance) {
-    if (__DEV__) {
-      warn(`provide() can only be used inside setup().`)
-    }
   } else {
     let provides = currentInstance.provides
     // by default an instance inherits its parent's provides object
@@ -69,11 +65,7 @@ export function inject(
       return treatDefaultAsFactory && isFunction(defaultValue)
         ? defaultValue.call(instance && instance.proxy)
         : defaultValue
-    } else if (__DEV__) {
-      warn(`injection "${String(key)}" not found.`)
     }
-  } else if (__DEV__) {
-    warn(`inject() can only be used inside setup() or functional components.`)
   }
 }
 

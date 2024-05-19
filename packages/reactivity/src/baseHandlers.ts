@@ -283,18 +283,13 @@ class ReadonlyReactiveHandler extends BaseReactiveHandler {
   }
 }
 
-export const mutableHandlers: ProxyHandler<object> =
-  /*#__PURE__*/ new MutableReactiveHandler()
+export const mutableHandlers: ProxyHandler<object> = new MutableReactiveHandler()
 
-export const readonlyHandlers: ProxyHandler<object> =
-  /*#__PURE__*/ new ReadonlyReactiveHandler()
+export const readonlyHandlers: ProxyHandler<object> = new ReadonlyReactiveHandler()
 
-export const shallowReactiveHandlers = /*#__PURE__*/ new MutableReactiveHandler(
-  true,
-)
+export const shallowReactiveHandlers = new MutableReactiveHandler(true)
 
 // Props handlers are special in the sense that it should not unwrap top-level
 // refs (in order to allow refs to be explicitly passed down), but should
 // retain the reactivity of the normal readonly object.
-export const shallowReadonlyHandlers =
-  /*#__PURE__*/ new ReadonlyReactiveHandler(true)
+export const shallowReadonlyHandlers = new ReadonlyReactiveHandler(true)

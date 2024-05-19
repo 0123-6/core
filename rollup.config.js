@@ -331,7 +331,7 @@ function createConfig(format, output, plugins = []) {
         tsconfig: path.resolve(__dirname, 'tsconfig.json'),
         sourceMap: output.sourcemap,
         minify: false,
-        target: isServerRenderer || isCJSBuild ? 'es2019' : 'es2016',
+        target: 'esnext',
         define: resolveDefine(),
       }),
       ...resolveNodePlugins(),

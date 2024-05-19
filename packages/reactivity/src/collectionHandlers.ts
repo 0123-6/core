@@ -352,18 +352,17 @@ function createInstrumentationGetter(isReadonly: boolean, shallow: boolean) {
 }
 
 export const mutableCollectionHandlers: ProxyHandler<CollectionTypes> = {
-  get: /*#__PURE__*/ createInstrumentationGetter(false, false),
+  get: createInstrumentationGetter(false, false),
 }
 
 export const shallowCollectionHandlers: ProxyHandler<CollectionTypes> = {
-  get: /*#__PURE__*/ createInstrumentationGetter(false, true),
+  get: createInstrumentationGetter(false, true),
 }
 
 export const readonlyCollectionHandlers: ProxyHandler<CollectionTypes> = {
-  get: /*#__PURE__*/ createInstrumentationGetter(true, false),
+  get: createInstrumentationGetter(true, false),
 }
 
-export const shallowReadonlyCollectionHandlers: ProxyHandler<CollectionTypes> =
-  {
-    get: /*#__PURE__*/ createInstrumentationGetter(true, true),
-  }
+export const shallowReadonlyCollectionHandlers: ProxyHandler<CollectionTypes> = {
+  get: createInstrumentationGetter(true, true),
+}

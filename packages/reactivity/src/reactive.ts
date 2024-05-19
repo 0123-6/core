@@ -13,7 +13,6 @@ import {
 } from './collectionHandlers'
 import type { RawSymbol, Ref, UnwrapRefSimple } from './ref'
 import { ReactiveFlags } from './constants'
-import { warn } from './warning'
 
 export interface Target {
   [ReactiveFlags.SKIP]?: boolean
@@ -247,9 +246,6 @@ function createReactiveObject(
   proxyMap: WeakMap<Target, any>,
 ) {
   if (!isObject(target)) {
-    if (__DEV__) {
-      warn(`value cannot be made reactive: ${String(target)}`)
-    }
     return target
   }
   // target is already a Proxy, return it.

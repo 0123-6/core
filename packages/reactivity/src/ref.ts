@@ -14,7 +14,6 @@ import {
   isObject,
 } from '@vue/shared'
 import {
-  isProxy,
   isReactive,
   isReadonly,
   isShallow,
@@ -25,7 +24,6 @@ import type { ShallowReactiveMarker } from './reactive'
 import { type Dep, createDep } from './dep'
 import { ComputedRefImpl } from './computed'
 import { getDepFromReactive } from './reactiveEffect'
-import { warn } from './warning'
 
 declare const RefSymbol: unique symbol
 export declare const RawSymbol: unique symbol
@@ -367,9 +365,6 @@ export type ToRefs<T = any> = {
  * @see {@link https://vuejs.org/api/reactivity-utilities.html#torefs}
  */
 export function toRefs<T extends object>(object: T): ToRefs<T> {
-  if (__DEV__ && !isProxy(object)) {
-    warn(`toRefs() expects a reactive object but received a plain one.`)
-  }
   const ret: any = isArray(object) ? new Array(object.length) : {}
   for (const key in object) {
     ret[key] = propertyToRef(object, key)

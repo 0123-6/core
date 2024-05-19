@@ -4,7 +4,6 @@ import { NOOP, hasChanged, isFunction } from '@vue/shared'
 import { toRaw } from './reactive'
 import type { Dep } from './dep'
 import { DirtyLevels, ReactiveFlags } from './constants'
-import { warn } from './warning'
 
 declare const ComputedRefSymbol: unique symbol
 
@@ -42,11 +41,6 @@ export class ComputedRefImpl<T> {
 
   public _cacheable: boolean
 
-  /**
-   * Dev only
-   */
-  _warnRecursive?: boolean
-
   constructor(
     private getter: ComputedGetter<T>,
     private readonly _setter: ComputedSetter<T>,
@@ -78,9 +72,6 @@ export class ComputedRefImpl<T> {
     }
     trackRefValue(self)
     if (self.effect._dirtyLevel >= DirtyLevels.MaybeDirty_ComputedSideEffect) {
-      if (__DEV__ && (__TEST__ || this._warnRecursive)) {
-        warn(COMPUTED_SIDE_EFFECT_WARN, `\n\ngetter: `, this.getter)
-      }
       triggerRefValue(self, DirtyLevels.MaybeDirty_ComputedSideEffect)
     }
     return self._value
@@ -89,16 +80,6 @@ export class ComputedRefImpl<T> {
   set value(newValue: T) {
     this._setter(newValue)
   }
-
-  // #region polyfill _dirty for backward compatibility third party code for Vue <= 3.3.x
-  get _dirty() {
-    return this.effect.dirty
-  }
-
-  set _dirty(v) {
-    this.effect.dirty = v
-  }
-  // #endregion
 }
 
 /**
@@ -148,11 +129,7 @@ export function computed<T>(
   const onlyGetter = isFunction(getterOrOptions)
   if (onlyGetter) {
     getter = getterOrOptions
-    setter = __DEV__
-      ? () => {
-          warn('Write operation failed: computed value is readonly')
-        }
-      : NOOP
+    setter = NOOP
   } else {
     getter = getterOrOptions.get
     setter = getterOrOptions.set

@@ -6,8 +6,7 @@ import {
   trigger,
 } from './reactiveEffect'
 import { ReactiveFlags, TrackOpTypes, TriggerOpTypes } from './constants'
-import { capitalize, hasChanged, hasOwn, isMap, toRawType } from '@vue/shared'
-import { warn } from './warning'
+import { hasChanged, hasOwn, isMap } from '@vue/shared'
 
 type CollectionTypes = IterableCollections | WeakCollections
 
@@ -93,8 +92,6 @@ function set(this: MapTypes, key: unknown, value: unknown) {
   if (!hadKey) {
     key = toRaw(key)
     hadKey = has.call(target, key)
-  } else if (__DEV__) {
-    checkIdentityKeys(target, has, key)
   }
 
   const oldValue = get.call(target, key)
@@ -102,7 +99,7 @@ function set(this: MapTypes, key: unknown, value: unknown) {
   if (!hadKey) {
     trigger(target, TriggerOpTypes.ADD, key, value)
   } else if (hasChanged(value, oldValue)) {
-    trigger(target, TriggerOpTypes.SET, key, value, oldValue)
+    trigger(target, TriggerOpTypes.SET, key, value)
   }
   return this
 }
@@ -114,15 +111,12 @@ function deleteEntry(this: CollectionTypes, key: unknown) {
   if (!hadKey) {
     key = toRaw(key)
     hadKey = has.call(target, key)
-  } else if (__DEV__) {
-    checkIdentityKeys(target, has, key)
   }
-
-  const oldValue = get ? get.call(target, key) : undefined
-  // forward the operation before queueing reactions
+  get ? get.call(target, key) : undefined
+// forward the operation before queueing reactions
   const result = target.delete(key)
   if (hadKey) {
-    trigger(target, TriggerOpTypes.DELETE, key, undefined, oldValue)
+    trigger(target, TriggerOpTypes.DELETE, key, undefined)
   }
   return result
 }
@@ -130,15 +124,10 @@ function deleteEntry(this: CollectionTypes, key: unknown) {
 function clear(this: IterableCollections) {
   const target = toRaw(this)
   const hadItems = target.size !== 0
-  const oldTarget = __DEV__
-    ? isMap(target)
-      ? new Map(target)
-      : new Set(target)
-    : undefined
   // forward the operation before queueing reactions
   const result = target.clear()
   if (hadItems) {
-    trigger(target, TriggerOpTypes.CLEAR, undefined, undefined, oldTarget)
+    trigger(target, TriggerOpTypes.CLEAR, undefined, undefined)
   }
   return result
 }
@@ -221,14 +210,7 @@ function createIterableMethod(
 }
 
 function createReadonlyMethod(type: TriggerOpTypes): Function {
-  return function (this: CollectionTypes, ...args: unknown[]) {
-    if (__DEV__) {
-      const key = args[0] ? `on key "${args[0]}" ` : ``
-      warn(
-        `${capitalize(type)} operation ${key}failed: target is readonly.`,
-        toRaw(this),
-      )
-    }
+  return function (this: CollectionTypes) {
     return type === TriggerOpTypes.DELETE
       ? false
       : type === TriggerOpTypes.CLEAR
@@ -385,21 +367,3 @@ export const shallowReadonlyCollectionHandlers: ProxyHandler<CollectionTypes> =
   {
     get: /*#__PURE__*/ createInstrumentationGetter(true, true),
   }
-
-function checkIdentityKeys(
-  target: CollectionTypes,
-  has: (key: unknown) => boolean,
-  key: unknown,
-) {
-  const rawKey = toRaw(key)
-  if (rawKey !== key && has.call(target, rawKey)) {
-    const type = toRawType(target)
-    warn(
-      `Reactive ${type} contains both the raw and reactive ` +
-        `versions of the same object${type === `Map` ? ` as keys` : ``}, ` +
-        `which can lead to inconsistencies. ` +
-        `Avoid differentiating between the raw and reactive versions ` +
-        `of an object and only use the reactive version if possible.`,
-    )
-  }
-}

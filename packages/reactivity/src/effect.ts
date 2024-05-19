@@ -40,10 +40,6 @@ export class ReactiveEffect<T = any> {
   allowRecurse?: boolean
 
   onStop?: () => void
-  // dev only
-  onTrack?: (event: DebuggerEvent) => void
-  // dev only
-  onTrigger?: (event: DebuggerEvent) => void
 
   /**
    * @internal

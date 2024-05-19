@@ -28,12 +28,11 @@ import {
   makeMap,
 } from '@vue/shared'
 import { isRef } from './ref'
-import { warn } from './warning'
 
-const isNonTrackableKeys = /*#__PURE__*/ makeMap(`__proto__,__v_isRef,__isVue`)
+// 定义一个函数，判断给定的参数是否在规定的字符串中，是否不需要追踪
+const isNonTrackableKeys = makeMap(`__proto__,__v_isRef,__isVue`)
 
 const builtInSymbols = new Set(
-  /*#__PURE__*/
   Object.getOwnPropertyNames(Symbol)
     // ios10.x Object.getOwnPropertyNames(Symbol) can enumerate 'arguments' and 'caller'
     // but accessing them on Symbol leads to TypeError because Symbol is a strict mode
@@ -98,7 +97,9 @@ class BaseReactiveHandler implements ProxyHandler<Target> {
     protected readonly _isReadonly = false,
     // _isShallow为false，表示不是浅层定义
     protected readonly _isShallow = false,
-  ) {}
+  ) {
+
+  }
 
   // get handler
   get(target: Target, key: string | symbol, receiver: object) {
@@ -146,6 +147,8 @@ class BaseReactiveHandler implements ProxyHandler<Target> {
 
     // 使用Reflect.get获取值
     const res = Reflect.get(target, key, receiver)
+
+
 
     if (isSymbol(key) ? builtInSymbols.has(key) : isNonTrackableKeys(key)) {
       return res
@@ -230,7 +233,7 @@ class MutableReactiveHandler extends BaseReactiveHandler {
         trigger(target, TriggerOpTypes.ADD, key, value)
       } else if (hasChanged(value, oldValue)) {
         // 如果值存在，且被修改了，触发修改方法
-        trigger(target, TriggerOpTypes.SET, key, value, oldValue)
+        trigger(target, TriggerOpTypes.SET, key, value)
       }
     }
     return result
@@ -239,10 +242,9 @@ class MutableReactiveHandler extends BaseReactiveHandler {
   // 删除属性拦截器
   deleteProperty(target: object, key: string | symbol): boolean {
     const hadKey = hasOwn(target, key)
-    const oldValue = (target as any)[key]
     const result = Reflect.deleteProperty(target, key)
     if (result && hadKey) {
-      trigger(target, TriggerOpTypes.DELETE, key, undefined, oldValue)
+      trigger(target, TriggerOpTypes.DELETE, key, undefined)
     }
     return result
   }
@@ -271,22 +273,12 @@ class ReadonlyReactiveHandler extends BaseReactiveHandler {
   }
 
   set(target: object, key: string | symbol) {
-    if (__DEV__) {
-      warn(
-        `Set operation on key "${String(key)}" failed: target is readonly.`,
-        target,
-      )
-    }
+    console.error('只读属性，不可设置')
     return true
   }
 
   deleteProperty(target: object, key: string | symbol) {
-    if (__DEV__) {
-      warn(
-        `Delete operation on key "${String(key)}" failed: target is readonly.`,
-        target,
-      )
-    }
+    console.error('只读属性，不可删除')
     return true
   }
 }

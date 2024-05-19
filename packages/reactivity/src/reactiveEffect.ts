@@ -19,8 +19,8 @@ type KeyToDepMap = Map<any, Dep>
 // Vue2是每一个属性持有一个Dep对象，在属性内部的dep对象上保存着订阅观察者的信息。
 const targetMap = new WeakMap<object, KeyToDepMap>()
 
-export const ITERATE_KEY = Symbol(__DEV__ ? 'iterate' : '')
-export const MAP_KEY_ITERATE_KEY = Symbol(__DEV__ ? 'Map key iterate' : '')
+export const ITERATE_KEY = Symbol('')
+export const MAP_KEY_ITERATE_KEY = Symbol('')
 
 /**
  * Tracks access to a reactive property.
@@ -48,13 +48,6 @@ export function track(target: object, type: TrackOpTypes, key: unknown) {
     trackEffect(
       activeEffect,
       dep,
-      __DEV__
-        ? {
-            target,
-            type,
-            key,
-          }
-        : void 0,
     )
   }
 }
@@ -73,8 +66,6 @@ export function trigger(
   type: TriggerOpTypes,
   key?: unknown,
   newValue?: unknown,
-  oldValue?: unknown,
-  oldTarget?: Map<unknown, unknown> | Set<unknown>,
 ) {
   // 获取target对应的map
   const depsMap = targetMap.get(target)
@@ -138,16 +129,6 @@ export function trigger(
       triggerEffects(
         dep,
         DirtyLevels.Dirty,
-        __DEV__
-          ? {
-              target,
-              type,
-              key,
-              newValue,
-              oldValue,
-              oldTarget,
-            }
-          : void 0,
       )
     }
   }

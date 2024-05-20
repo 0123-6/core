@@ -1,4 +1,4 @@
-import { NOOP, extend } from '@vue/shared'
+import { NOOP } from '@vue/shared'
 import type { ComputedRefImpl } from './computed'
 import {
   DirtyLevels,
@@ -9,10 +9,6 @@ import type { Dep } from './dep'
 import { type EffectScope, recordEffectScope } from './effectScope'
 
 export type EffectScheduler = (...args: any[]) => any
-
-export type DebuggerEvent = {
-  effect: ReactiveEffect
-} & DebuggerEventExtraInfo
 
 export type DebuggerEventExtraInfo = {
   target: object
@@ -33,7 +29,7 @@ export class ReactiveEffect<T = any> {
    * Can be attached after creation
    * @internal
    */
-  computed?: ComputedRefImpl<T>
+  computed?: ComputedRefImpl
   /**
    * @internal
    */
@@ -131,7 +127,7 @@ export class ReactiveEffect<T = any> {
   }
 }
 
-function triggerComputed(computed: ComputedRefImpl<any>) {
+function triggerComputed(computed: ComputedRefImpl) {
   return computed.value
 }
 
@@ -159,19 +155,6 @@ function cleanupDepEffect(dep: Dep, effect: ReactiveEffect) {
   }
 }
 
-export interface DebuggerOptions {
-  onTrack?: (event: DebuggerEvent) => void
-  onTrigger?: (event: DebuggerEvent) => void
-}
-
-export interface ReactiveEffectOptions extends DebuggerOptions {
-  lazy?: boolean
-  scheduler?: EffectScheduler
-  scope?: EffectScope
-  allowRecurse?: boolean
-  onStop?: () => void
-}
-
 export interface ReactiveEffectRunner<T = any> {
   (): T
   effect: ReactiveEffect
@@ -184,29 +167,20 @@ export interface ReactiveEffectRunner<T = any> {
  * property that's accessed within it gets updated, the function will run again.
  *
  * @param fn - The function that will track reactive updates.
- * @param options - Allows to control the effect's behaviour.
  * @returns A runner that can be used to control the effect after creation.
  */
 export function effect<T = any>(
   fn: () => T,
-  options?: ReactiveEffectOptions,
 ): ReactiveEffectRunner {
-  if ((fn as ReactiveEffectRunner).effect instanceof ReactiveEffect) {
-    fn = (fn as ReactiveEffectRunner).effect.fn
-  }
+  fn = (fn as ReactiveEffectRunner).effect.fn
 
   const _effect = new ReactiveEffect(fn, NOOP, () => {
     if (_effect.dirty) {
       _effect.run()
     }
   })
-  if (options) {
-    extend(_effect, options)
-    if (options.scope) recordEffectScope(_effect, options.scope)
-  }
-  if (!options || !options.lazy) {
-    _effect.run()
-  }
+
+  _effect.run()
   const runner = _effect.run.bind(_effect) as ReactiveEffectRunner
   runner.effect = _effect
   return runner

@@ -11,6 +11,6 @@ export function makeMap(
   const set = new Set(str.split(','))
   // 返回工具函数
   return expectsLowerCase
-    ? val => set.has(val.toLowerCase())// 如果需要小写转换，返回一个处理小写的函数
-    : val => set.has(val)// 否则，返回一个直接判断的函数
+    ? val => val.startsWith('__') || set.has(val.toLowerCase())// 如果需要小写转换，返回一个处理小写的函数
+    : val => val.startsWith('__') || set.has(val)// 否则，返回一个直接判断的函数
 }

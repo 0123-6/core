@@ -1,28 +1,8 @@
 import { ReactiveEffect } from './effect'
-import { type Ref, trackRefValue, triggerRefValue } from './ref'
+import { trackRefValue, triggerRefValue } from './ref'
 import { NOOP, hasChanged, isFunction } from '@vue/shared'
 import { toRaw } from './reactive'
-import type { Dep } from './dep'
-import { DirtyLevels, ReactiveFlags } from './constants'
-
-declare const ComputedRefSymbol: unique symbol
-
-export interface ComputedRef<T = any> extends WritableComputedRef<T> {
-  readonly value: T
-  [ComputedRefSymbol]: true
-}
-
-export interface WritableComputedRef<T> extends Ref<T> {
-  readonly effect: ReactiveEffect<T>
-}
-
-export type ComputedGetter<T> = (oldValue?: T) => T
-export type ComputedSetter<T> = (newValue: T) => void
-
-export interface WritableComputedOptions<T> {
-  get: ComputedGetter<T>
-  set: ComputedSetter<T>
-}
+import { DirtyLevels } from './constants'
 
 export const COMPUTED_SIDE_EFFECT_WARN =
   `Computed is still dirty after getter evaluation,` +
@@ -30,22 +10,19 @@ export const COMPUTED_SIDE_EFFECT_WARN =
   ` State mutations in computed getters should be avoided. ` +
   ` Check the docs for more details: https://vuejs.org/guide/essentials/computed.html#getters-should-be-side-effect-free`
 
-export class ComputedRefImpl<T> {
-  public dep?: Dep = undefined
+export class ComputedRefImpl {
+  public dep = undefined
 
-  private _value!: T
-  public readonly effect: ReactiveEffect<T>
+  private _value = undefined
+  public readonly effect: ReactiveEffect
 
   public readonly __v_isRef = true
-  public readonly [ReactiveFlags.IS_READONLY]: boolean = false
 
   public _cacheable: boolean
+  private _setter: any
 
-  constructor(
-    private getter: ComputedGetter<T>,
-    private readonly _setter: ComputedSetter<T>,
-    isReadonly: boolean,
-  ) {
+  constructor(getter:any, _setter:any) {
+    this._setter = _setter
     this.effect = new ReactiveEffect(
       () => getter(this._value),
       () =>
@@ -58,7 +35,6 @@ export class ComputedRefImpl<T> {
     )
     this.effect.computed = this
     this.effect.active = this._cacheable = true
-    this[ReactiveFlags.IS_READONLY] = isReadonly
   }
 
   get value() {
@@ -77,54 +53,14 @@ export class ComputedRefImpl<T> {
     return self._value
   }
 
-  set value(newValue: T) {
+  set value(newValue) {
     this._setter(newValue)
   }
 }
 
-/**
- * Takes a getter function and returns a readonly reactive ref object for the
- * returned value from the getter. It can also take an object with get and set
- * functions to create a writable ref object.
- *
- * @example
- * ```js
- * // Creating a readonly computed ref:
- * const count = ref(1)
- * const plusOne = computed(() => count.value + 1)
- *
- * console.log(plusOne.value) // 2
- * plusOne.value++ // error
- * ```
- *
- * ```js
- * // Creating a writable computed ref:
- * const count = ref(1)
- * const plusOne = computed({
- *   get: () => count.value + 1,
- *   set: (val) => {
- *     count.value = val - 1
- *   }
- * })
- *
- * plusOne.value = 1
- * console.log(count.value) // 0
- * ```
- *
- * @param getter - Function that produces the next value.
- * @see {@link https://vuejs.org/api/reactivity-core.html#computed}
- */
-export function computed<T>(
-  getter: ComputedGetter<T>,
-): ComputedRef<T>
-export function computed<T>(
-  options: WritableComputedOptions<T>,
-): WritableComputedRef<T>
-export function computed<T>(
-  getterOrOptions: ComputedGetter<T> | WritableComputedOptions<T>,
-) {
-  let getter: ComputedGetter<T>
-  let setter: ComputedSetter<T>
+export function computed(getterOrOptions: any) {
+  let getter
+  let setter
 
   const onlyGetter = isFunction(getterOrOptions)
   if (onlyGetter) {
@@ -135,7 +71,5 @@ export function computed<T>(
     setter = getterOrOptions.set
   }
 
-  const cRef = new ComputedRefImpl(getter, setter, onlyGetter || !setter)
-
-  return cRef as any
+  return new ComputedRefImpl(getter, setter) as any
 }

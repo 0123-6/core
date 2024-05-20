@@ -8,7 +8,6 @@ import {
   getCurrentScope,
   isReactive,
   isRef,
-  isShallow,
 } from '@vue/reactivity'
 import { type SchedulerJob, queueJob } from './scheduler'
 import {
@@ -167,13 +166,13 @@ function doWatch(
 
   if (isRef(source)) {
     getter = () => source.value
-    forceTrigger = isShallow(source)
+    forceTrigger = false
   } else if (isReactive(source)) {
     getter = () => reactiveGetter(source)
     forceTrigger = true
   } else if (isArray(source)) {
     isMultiSource = true
-    forceTrigger = source.some(s => isReactive(s) || isShallow(s))
+    forceTrigger = source.some(s => isReactive(s))
     getter = () =>
       source.map(s => {
         if (isRef(s)) {

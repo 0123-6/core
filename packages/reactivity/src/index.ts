@@ -1,6 +1,5 @@
 export {
   ref,
-  shallowRef,
   isRef,
   toRef,
   toValue,
@@ -15,34 +14,22 @@ export {
   type ToRef,
   type ToRefs,
   type UnwrapRef,
-  type ShallowRef,
   type ShallowUnwrapRef,
   type RefUnwrapBailTypes,
   type CustomRefFactory,
 } from './ref'
 export {
   reactive,
-  readonly,
   isReactive,
-  isReadonly,
-  isShallow,
   isProxy,
-  shallowReactive,
-  shallowReadonly,
   markRaw,
   toRaw,
   type Raw,
-  type DeepReadonly,
   type ShallowReactive,
   type UnwrapNestedRefs,
 } from './reactive'
 export {
   computed,
-  type ComputedRef,
-  type WritableComputedRef,
-  type WritableComputedOptions,
-  type ComputedGetter,
-  type ComputedSetter,
   type ComputedRefImpl,
 } from './computed'
 export {
@@ -55,11 +42,7 @@ export {
   resetScheduling,
   ReactiveEffect,
   type ReactiveEffectRunner,
-  type ReactiveEffectOptions,
   type EffectScheduler,
-  type DebuggerOptions,
-  type DebuggerEvent,
-  type DebuggerEventExtraInfo,
 } from './effect'
 export { trigger, track, ITERATE_KEY } from './reactiveEffect'
 export {

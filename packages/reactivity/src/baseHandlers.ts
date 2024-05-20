@@ -1,13 +1,7 @@
 import {
   type Target,
-  isReadonly,
-  isShallow,
   reactive,
   reactiveMap,
-  readonly,
-  readonlyMap,
-  shallowReactiveMap,
-  shallowReadonlyMap,
   toRaw,
 } from './reactive'
 import { ReactiveFlags, TrackOpTypes, TriggerOpTypes } from './constants'
@@ -92,51 +86,33 @@ function hasOwnProperty(this: object, key: unknown) {
  */
 class BaseReactiveHandler implements ProxyHandler<Target> {
   // 构造函数
-  constructor(
-    // _isReadonly为false，表示表示只读
-    protected readonly _isReadonly = false,
-    // _isShallow为false，表示不是浅层定义
-    protected readonly _isShallow = false,
-  ) {
-
-  }
+  constructor() {}
 
   // get handler
   get(target: Target, key: string | symbol, receiver: object) {
-    const isReadonly = this._isReadonly,
-      isShallow = this._isShallow
     if (key === ReactiveFlags.IS_REACTIVE) {
-      return !isReadonly
-    } else if (key === ReactiveFlags.IS_READONLY) {
-      return isReadonly
-    } else if (key === ReactiveFlags.IS_SHALLOW) {
-      return isShallow
-    } else if (key === ReactiveFlags.RAW) {
-      if (
-        receiver ===
-          (isReadonly
-            ? isShallow
-              ? shallowReadonlyMap
-              : readonlyMap
-            : isShallow
-              ? shallowReactiveMap
-              : reactiveMap
-          ).get(target) ||
-        // receiver is not the reactive proxy, but has the same prototype
-        // this means the reciever is a user proxy of the reactive proxy
-        Object.getPrototypeOf(target) === Object.getPrototypeOf(receiver)
-      ) {
-        return target
+      return true
+    } else {
+      if (key === ReactiveFlags.RAW) {
+        if (
+          receiver ===
+          (reactiveMap).get(target) ||
+          // receiver is not the reactive proxy, but has the same prototype
+          // this means the reciever is a user proxy of the reactive proxy
+          Object.getPrototypeOf(target) === Object.getPrototypeOf(receiver)
+        ) {
+          return target
+        }
+        // early return undefined
+        return
       }
-      // early return undefined
-      return
     }
 
     // 判断target是否为数组,data()最外层为对象，所以不是数组
     const targetIsArray = isArray(target)
 
     // 特殊情况处理
-    if (!isReadonly) {
+    if (!false) {
       if (targetIsArray && hasOwn(arrayInstrumentations, key)) {
         return Reflect.get(arrayInstrumentations, key, receiver)
       }
@@ -156,12 +132,8 @@ class BaseReactiveHandler implements ProxyHandler<Target> {
 
     // 重点来了，如果不是只读处理器，
     // 追踪这个属性
-    if (!isReadonly) {
+    if (!false) {
       track(target, TrackOpTypes.GET, key)
-    }
-
-    if (isShallow) {
-      return res
     }
 
     if (isRef(res)) {
@@ -173,7 +145,7 @@ class BaseReactiveHandler implements ProxyHandler<Target> {
       // Convert returned value into a proxy as well. we do the isObject check
       // here to avoid invalid value warning. Also need to lazy access readonly
       // and reactive here to avoid circular dependency.
-      return isReadonly ? readonly(res) : reactive(res)
+      return reactive(res)
     }
 
     // 返回获得的值
@@ -185,10 +157,6 @@ class BaseReactiveHandler implements ProxyHandler<Target> {
  * 正常的可修改的对象的处理类
  */
 class MutableReactiveHandler extends BaseReactiveHandler {
-  constructor(isShallow = false) {
-    super(false, isShallow)
-  }
-
   // set拦截器
   set(
     target: object,
@@ -197,25 +165,17 @@ class MutableReactiveHandler extends BaseReactiveHandler {
     receiver: object,
   ): boolean {
     let oldValue = (target as any)[key]
-    if (!this._isShallow) {
-      // oldValue是否为只读
-      const isOldValueReadonly = isReadonly(oldValue)
-      // 如果value不是浅层监听，不是只读变量
-      if (!isShallow(value) && !isReadonly(value)) {
-        oldValue = toRaw(oldValue)
-        value = toRaw(value)
+     // oldValue是否为只读
+    const isOldValueReadonly = false
+    oldValue = toRaw(oldValue)
+    value = toRaw(value)
+    if (!isArray(target) && isRef(oldValue) && !isRef(value)) {
+      if (isOldValueReadonly) {
+        return false
+      } else {
+        oldValue.value = value
+        return true
       }
-      // 如果target表示数组，oldValue是ref，value不是ref
-      if (!isArray(target) && isRef(oldValue) && !isRef(value)) {
-        if (isOldValueReadonly) {
-          return false
-        } else {
-          oldValue.value = value
-          return true
-        }
-      }
-    } else {
-      // in shallow mode, objects are set as-is regardless of reactive or not
     }
 
     // 判断target是否存在key
@@ -267,29 +227,4 @@ class MutableReactiveHandler extends BaseReactiveHandler {
   }
 }
 
-class ReadonlyReactiveHandler extends BaseReactiveHandler {
-  constructor(isShallow = false) {
-    super(true, isShallow)
-  }
-
-  set(target: object, key: string | symbol) {
-    console.error('只读属性，不可设置')
-    return true
-  }
-
-  deleteProperty(target: object, key: string | symbol) {
-    console.error('只读属性，不可删除')
-    return true
-  }
-}
-
 export const mutableHandlers: ProxyHandler<object> = new MutableReactiveHandler()
-
-export const readonlyHandlers: ProxyHandler<object> = new ReadonlyReactiveHandler()
-
-export const shallowReactiveHandlers = new MutableReactiveHandler(true)
-
-// Props handlers are special in the sense that it should not unwrap top-level
-// refs (in order to allow refs to be explicitly passed down), but should
-// retain the reactivity of the normal readonly object.
-export const shallowReadonlyHandlers = new ReadonlyReactiveHandler(true)

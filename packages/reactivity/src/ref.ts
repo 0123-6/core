@@ -1,4 +1,3 @@
-import type { ComputedRef } from './computed'
 import {
   activeEffect,
   shouldTrack,
@@ -15,8 +14,6 @@ import {
 } from '@vue/shared'
 import {
   isReactive,
-  isReadonly,
-  isShallow,
   toRaw,
   toReactive,
 } from './reactive'
@@ -93,63 +90,22 @@ export function isRef(r: any): r is Ref {
  * Takes an inner value and returns a reactive and mutable ref object, which
  * has a single property `.value` that points to the inner value.
  * 参数为原始值，返回响应式的对象，这个对象有1个属性value，指向原始值。
+ * 创建ref函数，ref()为一个工厂函数，用于创建RefImpl类的实例对象
  * // ref是createRef()的包装器，对应shallow为false
  * // shallowRef()同样是createRef()的包装器，对应shallow为true
  *
- * @param value - The object to wrap in the ref.
+ * @param rawValue - The object to wrap in the ref.
  * @see {@link https://vuejs.org/api/reactivity-core.html#ref}
  */
-export function ref<T>(value: T): Ref<UnwrapRef<T>>
+export function ref<T>(rawValue: T): Ref<UnwrapRef<T>>
 export function ref<T = any>(): Ref<T | undefined>
-export function ref(value?: unknown) {
-  return createRef(value, false)
-}
-
-declare const ShallowRefMarker: unique symbol
-
-export type ShallowRef<T = any> = Ref<T> & { [ShallowRefMarker]?: true }
-
-/**
- * Shallow version of {@link ref()}.
- *
- * @example
- * ```js
- * const state = shallowRef({ count: 1 })
- *
- * // does NOT trigger change
- * state.value.count = 2
- *
- * // does trigger change
- * state.value = { count: 2 }
- * ```
- *
- * @param value - The "inner value" for the shallow ref.
- * @see {@link https://vuejs.org/api/reactivity-advanced.html#shallowref}
- */
-export function shallowRef<T>(
-  value: T,
-): Ref extends T
-  ? T extends Ref
-    ? IfAny<T, ShallowRef<T>, T>
-    : ShallowRef<T>
-  : ShallowRef<T>
-export function shallowRef<T = any>(): ShallowRef<T | undefined>
-export function shallowRef(value?: unknown) {
-  return createRef(value, true)
-}
-
-/**
- * 创建ref函数，createRef()为一个工厂函数，用于创建RefImpl类的实例对象
- * @param rawValue 原始值
- * @param shallow 是否是浅层响应式
- */
-function createRef(rawValue: unknown, shallow: boolean) {
+export function ref(rawValue?: unknown) {
   // 如果传入的参数已经是ref对象，直接返回
   if (isRef(rawValue)) {
     return rawValue
   }
   // new一个RefImpl对象并返回
-  return new RefImpl(rawValue, shallow)
+  return new RefImpl(rawValue)
 }
 
 /**
@@ -169,13 +125,12 @@ class RefImpl<T> {
   // 构造函数
   constructor(
     value: T,
-    public readonly __v_isShallow: boolean,
   ) {
     // 如果是浅层的话，啥也不做，呜呜呜
     // 获取参数的原始值
-    this._rawValue = __v_isShallow ? value : toRaw(value)
+    this._rawValue = toRaw(value)
     // 将传入的参数响应式化
-    this._value = __v_isShallow ? value : toReactive(value)
+    this._value = toReactive(value)
   }
 
   // value并不是实际的属性，而是一对getter,setter
@@ -188,16 +143,13 @@ class RefImpl<T> {
   }
 
   set value(newVal) {
-    // 使用直接的值？？？
-    const useDirectValue =
-      this.__v_isShallow || isShallow(newVal) || isReadonly(newVal)
     // 获取参数的原始值
-    newVal = useDirectValue ? newVal : toRaw(newVal)
+    newVal = toRaw(newVal)
     // 如果新值和旧值不一样
     if (hasChanged(newVal, this._rawValue)) {
       // 重新设置_rawValue和_value
       this._rawValue = newVal
-      this._value = useDirectValue ? newVal : toReactive(newVal)
+      this._value = toReactive(newVal)
       // 触发所有订阅了此ref的观察者对象
       triggerRefValue(this, DirtyLevels.Dirty)
     }
@@ -252,7 +204,7 @@ export type MaybeRefOrGetter<T = any> = MaybeRef<T> | (() => T)
  * @param ref - Ref or plain value to be converted into the plain value.
  * @see {@link https://vuejs.org/api/reactivity-utilities.html#unref}
  */
-export function unref<T>(ref: MaybeRef<T> | ComputedRef<T>): T {
+export function unref<T>(ref: any): T {
   return isRef(ref) ? ref.value : ref
 }
 
@@ -272,7 +224,7 @@ export function unref<T>(ref: MaybeRef<T> | ComputedRef<T>): T {
  * @param source - A getter, an existing ref, or a non-function value.
  * @see {@link https://vuejs.org/api/reactivity-utilities.html#tovalue}
  */
-export function toValue<T>(source: MaybeRefOrGetter<T> | ComputedRef<T>): T {
+export function toValue<T>(source: any): T {
   return isFunction(source) ? source() : unref(source)
 }
 
@@ -519,11 +471,9 @@ export type ShallowUnwrapRef<T> = {
 type DistrubuteRef<T> = T extends Ref<infer V> ? V : T
 
 export type UnwrapRef<T> =
-  T extends ShallowRef<infer V>
-    ? V
-    : T extends Ref<infer V>
-      ? UnwrapRefSimple<V>
-      : UnwrapRefSimple<T>
+  T extends Ref<infer V>
+    ? UnwrapRefSimple<V>
+    : UnwrapRefSimple<T>
 
 export type UnwrapRefSimple<T> = T extends
   | Function

@@ -1,8 +1,7 @@
 import {
   TriggerOpTypes,
-  shallowReactive,
   toRaw,
-  trigger,
+  trigger, reactive
 } from '@vue/reactivity'
 import {
   EMPTY_ARR,
@@ -202,7 +201,7 @@ export function initProps(
 
   if (isStateful) {
     // stateful
-    instance.props = shallowReactive(props)
+    instance.props = reactive(props)
   } else {
     if (!instance.type.props) {
       // functional w/ optional props, props === attrs

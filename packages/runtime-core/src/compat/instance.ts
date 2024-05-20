@@ -19,7 +19,6 @@ import {
 } from './compatConfig'
 import { off, on, once } from './instanceEventEmitter'
 import { getCompatListeners } from './instanceListeners'
-import { shallowReadonly } from '@vue/reactivity'
 import { legacySlotProxyHandlers } from './componentFunctional'
 import { compatH } from './renderFn'
 import { createCommentVNode, createTextVNode } from '../vnode'
@@ -100,12 +99,12 @@ export function installCompatInstanceProperties(map: PublicPropertiesMap) {
       ) {
         return new Proxy(i.slots, legacySlotProxyHandlers)
       }
-      return __DEV__ ? shallowReadonly(i.slots) : i.slots
+      return i.slots
     },
 
     $scopedSlots: i => {
       assertCompatEnabled(DeprecationTypes.INSTANCE_SCOPED_SLOTS, i)
-      return __DEV__ ? shallowReadonly(i.slots) : i.slots
+      return i.slots
     },
 
     $on: i => on.bind(null, i),

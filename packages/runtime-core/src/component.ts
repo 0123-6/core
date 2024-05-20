@@ -7,7 +7,6 @@ import {
   proxyRefs,
   type ReactiveEffect,
   resetTracking,
-  shallowReadonly,
   track,
   TrackOpTypes,
 } from '@vue/reactivity'
@@ -682,7 +681,7 @@ function setupStatefulComponent(
       instance,
       ErrorCodes.SETUP_FUNCTION,
       [
-        __DEV__ ? shallowReadonly(instance.props) : instance.props,
+        instance.props,
         setupContext,
       ],
     )

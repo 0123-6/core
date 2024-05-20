@@ -22,9 +22,7 @@ export {
   reactive,
   isReactive,
   isProxy,
-  markRaw,
   toRaw,
-  type Raw,
   type UnwrapNestedRefs,
 } from './reactive'
 export {

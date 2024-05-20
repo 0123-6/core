@@ -11,14 +11,13 @@ import {
   resetScheduling,
   resetTracking,
 } from './effect'
-import { ITERATE_KEY, track, trigger } from './reactiveEffect'
+import { track, trigger } from './reactiveEffect'
 import {
   hasChanged,
   hasOwn,
   isArray,
   isIntegerKey,
   isObject,
-  isSymbol,
   makeMap,
 } from '@vue/shared'
 import { isRef } from './ref'
@@ -63,21 +62,8 @@ function createArrayInstrumentations() {
   return instrumentations
 }
 
-function hasOwnProperty(this: object, key: unknown) {
-  // #10455 hasOwnProperty may be called with non-string values
-  if (!isSymbol(key)) key = String(key)
-  const obj = toRaw(this)
-  track(obj, TrackOpTypes.HAS, key)
-  return obj.hasOwnProperty(key as string)
-}
-
-/**
- * 基础的ProxyHandler接口的实现,正常的可修改的对象的处理类
- */
-class ProxyHandler implements ProxyHandler {
-  // 构造函数
-  constructor() {}
-
+// handler拦截器对象
+export const proxyHandler = {
   // get handler
   get(target: Target, key: string | symbol, receiver: object) {
     if (key === ReactiveFlags.IS_REACTIVE) {
@@ -105,9 +91,6 @@ class ProxyHandler implements ProxyHandler {
     if (targetIsArray && hasOwn(arrayInstrumentations, key)) {
       return Reflect.get(arrayInstrumentations, key, receiver)
     }
-    if (key === 'hasOwnProperty') {
-      return hasOwnProperty
-    }
 
     // 使用Reflect.get获取值
     const res = Reflect.get(target, key, receiver)
@@ -133,7 +116,7 @@ class ProxyHandler implements ProxyHandler {
 
     // 返回获得的值
     return res
-  }
+  },
 
   // set拦截器
   set(
@@ -175,22 +158,12 @@ class ProxyHandler implements ProxyHandler {
       }
     }
     return result
-  }
+  },
 
   // in操作符拦截器
   has(target: object, key: string | symbol): boolean {
     const result = Reflect.has(target, key)
     track(target, TrackOpTypes.HAS, key)
     return result
-  }
-  ownKeys(target: object): (string | symbol)[] {
-    track(
-      target,
-      TrackOpTypes.ITERATE,
-      isArray(target) ? 'length' : ITERATE_KEY,
-    )
-    return Reflect.ownKeys(target)
-  }
+  },
 }
-
-export const proxyHandler: ProxyHandler = new ProxyHandler()

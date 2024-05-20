@@ -2,7 +2,6 @@ import {isVNode, type VNode, type VNodeChild} from './vnode'
 import {
   EffectScope,
   isRef,
-  markRaw,
   pauseTracking,
   proxyRefs,
   type ReactiveEffect,
@@ -910,7 +909,7 @@ export function getExposeProxy(instance: ComponentInternalInstance) {
   if (instance.exposed) {
     return (
       instance.exposeProxy ||
-      (instance.exposeProxy = new Proxy(proxyRefs(markRaw(instance.exposed)), {
+      (instance.exposeProxy = new Proxy(proxyRefs(instance.exposed), {
         get(target, key: string) {
           if (key in target) {
             return target[key]

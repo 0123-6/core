@@ -64,7 +64,7 @@ function createArrayInstrumentations() {
 
 // handler拦截器对象
 export const proxyHandler = {
-  // get handler
+  // get拦截器
   get(target: Target, key: string | symbol, receiver: object) {
     if (key === ReactiveFlags.IS_REACTIVE) {
       return true
@@ -157,13 +157,6 @@ export const proxyHandler = {
         trigger(target, TriggerOpTypes.SET, key, value)
       }
     }
-    return result
-  },
-
-  // in操作符拦截器
-  has(target: object, key: string | symbol): boolean {
-    const result = Reflect.has(target, key)
-    track(target, TrackOpTypes.HAS, key)
     return result
   },
 }

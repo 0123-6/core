@@ -26,16 +26,6 @@ import { isRef } from './ref'
 // 定义一个函数，判断给定的参数是否在规定的字符串中，是否不需要追踪
 const isNonTrackableKeys = makeMap(`__proto__,__v_isRef,__isVue`)
 
-const builtInSymbols = new Set(
-  Object.getOwnPropertyNames(Symbol)
-    // ios10.x Object.getOwnPropertyNames(Symbol) can enumerate 'arguments' and 'caller'
-    // but accessing them on Symbol leads to TypeError because Symbol is a strict mode
-    // function
-    .filter(key => key !== 'arguments' && key !== 'caller')
-    .map(key => (Symbol as any)[key])
-    .filter(isSymbol),
-)
-
 const arrayInstrumentations = /*#__PURE__*/ createArrayInstrumentations()
 
 function createArrayInstrumentations() {
@@ -82,9 +72,9 @@ function hasOwnProperty(this: object, key: unknown) {
 }
 
 /**
- * 基础的ProxyHandler接口的实现
+ * 基础的ProxyHandler接口的实现,正常的可修改的对象的处理类
  */
-class BaseReactiveHandler implements ProxyHandler<Target> {
+class ProxyHandler implements ProxyHandler {
   // 构造函数
   constructor() {}
 
@@ -112,29 +102,22 @@ class BaseReactiveHandler implements ProxyHandler<Target> {
     const targetIsArray = isArray(target)
 
     // 特殊情况处理
-    if (!false) {
-      if (targetIsArray && hasOwn(arrayInstrumentations, key)) {
-        return Reflect.get(arrayInstrumentations, key, receiver)
-      }
-      if (key === 'hasOwnProperty') {
-        return hasOwnProperty
-      }
+    if (targetIsArray && hasOwn(arrayInstrumentations, key)) {
+      return Reflect.get(arrayInstrumentations, key, receiver)
+    }
+    if (key === 'hasOwnProperty') {
+      return hasOwnProperty
     }
 
     // 使用Reflect.get获取值
     const res = Reflect.get(target, key, receiver)
 
-
-
-    if (isSymbol(key) ? builtInSymbols.has(key) : isNonTrackableKeys(key)) {
+    if (isNonTrackableKeys(key)) {
       return res
     }
 
-    // 重点来了，如果不是只读处理器，
     // 追踪这个属性
-    if (!false) {
-      track(target, TrackOpTypes.GET, key)
-    }
+    track(target, TrackOpTypes.GET, key)
 
     if (isRef(res)) {
       // ref unwrapping - skip unwrap for Array + integer key.
@@ -151,12 +134,7 @@ class BaseReactiveHandler implements ProxyHandler<Target> {
     // 返回获得的值
     return res
   }
-}
 
-/**
- * 正常的可修改的对象的处理类
- */
-class MutableReactiveHandler extends BaseReactiveHandler {
   // set拦截器
   set(
     target: object,
@@ -165,7 +143,7 @@ class MutableReactiveHandler extends BaseReactiveHandler {
     receiver: object,
   ): boolean {
     let oldValue = (target as any)[key]
-     // oldValue是否为只读
+    // oldValue是否为只读
     const isOldValueReadonly = false
     oldValue = toRaw(oldValue)
     value = toRaw(value)
@@ -199,22 +177,10 @@ class MutableReactiveHandler extends BaseReactiveHandler {
     return result
   }
 
-  // 删除属性拦截器
-  deleteProperty(target: object, key: string | symbol): boolean {
-    const hadKey = hasOwn(target, key)
-    const result = Reflect.deleteProperty(target, key)
-    if (result && hadKey) {
-      trigger(target, TriggerOpTypes.DELETE, key, undefined)
-    }
-    return result
-  }
-
   // in操作符拦截器
   has(target: object, key: string | symbol): boolean {
     const result = Reflect.has(target, key)
-    if (!isSymbol(key) || !builtInSymbols.has(key)) {
-      track(target, TrackOpTypes.HAS, key)
-    }
+    track(target, TrackOpTypes.HAS, key)
     return result
   }
   ownKeys(target: object): (string | symbol)[] {
@@ -227,4 +193,4 @@ class MutableReactiveHandler extends BaseReactiveHandler {
   }
 }
 
-export const mutableHandlers: ProxyHandler<object> = new MutableReactiveHandler()
+export const proxyHandlers: ProxyHandler = new ProxyHandler()

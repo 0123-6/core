@@ -1,7 +1,7 @@
 import { def, isObject, toRawType } from '@vue/shared'
 import type { RawSymbol, Ref, UnwrapRefSimple } from './ref'
 import { ReactiveFlags } from './constants'
-import { mutableHandlers } from './baseHandlers'
+import { proxyHandlers } from './baseHandlers'
 
 export interface Target {
   [ReactiveFlags.SKIP]?: boolean
@@ -78,7 +78,7 @@ export function reactive(target: object) {
   }
   const proxy = new Proxy(
     target,
-    mutableHandlers,
+    proxyHandlers,
   )
   reactiveMap.set(target, proxy)
   return proxy

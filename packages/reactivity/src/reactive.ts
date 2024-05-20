@@ -1,4 +1,4 @@
-import { def, isObject, toRawType } from '@vue/shared'
+import { def, isObject } from '@vue/shared'
 import type { RawSymbol, Ref, UnwrapRefSimple } from './ref'
 import { ReactiveFlags } from './constants'
 import { proxyHandler } from './proxyHandler'
@@ -11,75 +11,32 @@ export interface Target {
 
 export const reactiveMap = new WeakMap<Target, any>()
 
-enum TargetType {
-  INVALID = 0,
-  COMMON = 1,
-  COLLECTION = 2,
-}
-
-function targetTypeMap(rawType: string) {
-  switch (rawType) {
-    case 'Object':
-    case 'Array':
-      return TargetType.COMMON
-    case 'Map':
-    case 'Set':
-    case 'WeakMap':
-    case 'WeakSet':
-      return TargetType.COLLECTION
-    default:
-      return TargetType.INVALID
-  }
-}
-
-function getTargetType(value: Target) {
-  return value[ReactiveFlags.SKIP] || !Object.isExtensible(value)
-    ? TargetType.INVALID
-    : targetTypeMap(toRawType(value))
-}
-
 // only unwrap nested ref
 export type UnwrapNestedRefs<T> = T extends Ref ? T : UnwrapRefSimple<T>
 
-/**
- * Returns a reactive proxy of the object.
- *
- * The reactive conversion is "deep": it affects all nested properties. A
- * reactive object also deeply unwraps any properties that are refs while
- * maintaining reactivity.
- *
- * @example
- * ```js
- * const obj = reactive({ count: 0 })
- * ```
- *
- * @param target - The source object.
- * @see {@link https://vuejs.org/api/reactivity-core.html#reactive}
- */
+// 返回一个对象的响应式代理
 export function reactive(target: object) {
+  // 如果target不是对象类型，直接返回
   if (!isObject(target)) {
     return target
   }
-  // target is already a Proxy, return it.
-  // exception: calling readonly() on a reactive object
+  // 如果target已经是一个proxy，直接返回
   if (target[ReactiveFlags.RAW]) {
     return target
   }
-  // target already has corresponding Proxy
+  // 已经存在这个对象的缓存，返回对应缓存
   const existingProxy = reactiveMap.get(target)
   if (existingProxy) {
     return existingProxy
   }
-  // only specific value types can be observed.
-  const targetType = getTargetType(target)
-  if (targetType === TargetType.INVALID) {
-    return target
-  }
+  // 定义新的proxy对象
   const proxy = new Proxy(
     target,
     proxyHandler,
   )
+  // 将新对象放入缓存中
   reactiveMap.set(target, proxy)
+  // 返回新对象
   return proxy
 }
 

@@ -21,7 +21,7 @@ export function reactive(target: object) {
     return target
   }
   // 如果target已经是一个proxy，直接返回
-  if (target[ReactiveFlags.RAW]) {
+  if (isProxy(target)) {
     return target
   }
   // 已经存在这个对象的缓存，返回对应缓存

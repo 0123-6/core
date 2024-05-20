@@ -13,11 +13,9 @@ import {
   isObject,
 } from '@vue/shared'
 import {
-  isReactive,
-  toRaw,
-  toReactive,
+  isReactive, reactive,
+  toRaw
 } from './reactive'
-import type { ShallowReactiveMarker } from './reactive'
 import { type Dep, createDep } from './dep'
 import { ComputedRefImpl } from './computed'
 import { getDepFromReactive } from './reactiveEffect'
@@ -78,27 +76,12 @@ export function triggerRefValue(
   }
 }
 
-/**
- * 判断传入的参数是否为ref对象
- */
-export function isRef<T>(r: Ref<T> | unknown): r is Ref<T>
+// 判断传入的参数是否为ref对象
 export function isRef(r: any): r is Ref {
   return !!(r && r.__v_isRef === true)
 }
 
-/**
- * Takes an inner value and returns a reactive and mutable ref object, which
- * has a single property `.value` that points to the inner value.
- * 参数为原始值，返回响应式的对象，这个对象有1个属性value，指向原始值。
- * 创建ref函数，ref()为一个工厂函数，用于创建RefImpl类的实例对象
- * // ref是createRef()的包装器，对应shallow为false
- * // shallowRef()同样是createRef()的包装器，对应shallow为true
- *
- * @param rawValue - The object to wrap in the ref.
- * @see {@link https://vuejs.org/api/reactivity-core.html#ref}
- */
-export function ref<T>(rawValue: T): Ref<UnwrapRef<T>>
-export function ref<T = any>(): Ref<T | undefined>
+// ref是一个工厂函数，参数为原始值，返回一个RefImpl实例
 export function ref(rawValue?: unknown) {
   // 如果传入的参数已经是ref对象，直接返回
   if (isRef(rawValue)) {
@@ -111,11 +94,11 @@ export function ref(rawValue?: unknown) {
 /**
  * Ref类的定义
  */
-class RefImpl<T> {
+class RefImpl {
   // 私有属性_value
-  private _value: T
+  private _value: any
   // 私有属性_rawValue
-  private _rawValue: T
+  private _rawValue: any
 
   // 该ref对象作为一个依赖，dep保存着订阅该依赖的观察者数组
   public dep?: Dep = undefined
@@ -124,13 +107,13 @@ class RefImpl<T> {
 
   // 构造函数
   constructor(
-    value: T,
+    value: any,
   ) {
     // 如果是浅层的话，啥也不做，呜呜呜
     // 获取参数的原始值
     this._rawValue = toRaw(value)
     // 将传入的参数响应式化
-    this._value = toReactive(value)
+    this._value = reactive(value)
   }
 
   // value并不是实际的属性，而是一对getter,setter
@@ -149,7 +132,7 @@ class RefImpl<T> {
     if (hasChanged(newVal, this._rawValue)) {
       // 重新设置_rawValue和_value
       this._rawValue = newVal
-      this._value = toReactive(newVal)
+      this._value = reactive(newVal)
       // 触发所有订阅了此ref的观察者对象
       triggerRefValue(this, DirtyLevels.Dirty)
     }
@@ -421,7 +404,7 @@ export function toRef(
   source: Record<string, any> | MaybeRef,
   key?: string,
   defaultValue?: unknown,
-): Ref {
+): Ref<any> | RefImpl {
   if (isRef(source)) {
     return source
   } else if (isFunction(source)) {
@@ -493,8 +476,4 @@ export type UnwrapRefSimple<T> = T extends
           ? WeakSet<UnwrapRefSimple<V>> & UnwrapRef<Omit<T, keyof WeakSet<any>>>
           : T extends ReadonlyArray<any>
             ? { [K in keyof T]: UnwrapRefSimple<T[K]> }
-            : T extends object & { [ShallowReactiveMarker]?: never }
-              ? {
-                  [P in keyof T]: P extends symbol ? T[P] : UnwrapRef<T[P]>
-                }
-              : T
+            : T

@@ -193,4 +193,4 @@ class ProxyHandler implements ProxyHandler {
   }
 }
 
-export const proxyHandlers: ProxyHandler = new ProxyHandler()
+export const proxyHandler: ProxyHandler = new ProxyHandler()

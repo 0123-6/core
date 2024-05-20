@@ -1,5 +1,3 @@
-// debugger
-
 // 定义1个值
 const loveGirlList = Vue.ref([
 	{
@@ -36,3 +34,36 @@ loveGirlList.value.push({
 },)
 console.log('mostLoveGirl: ', mostLoveGirl.value)
 
+
+const obj1 = Vue.reactive({
+	name: '韩佩江',
+	age: 25,
+	love: [
+		{
+			name: '夏翀',
+			age: 25,
+		}
+	]
+})
+
+const computed1 = Vue.computed(() => {
+	let str = ''
+	for(const {name} of obj1.love) {
+		str += name
+	}
+	return str
+})
+console.log(computed1.value)
+
+obj1.love.push({
+	name: '吕凤凤',
+	age: 24,
+})
+console.log(computed1.value)
+
+
+obj1.love = [{
+	name: '葛鑫',
+	age: 25,
+}]
+console.log(computed1.value)

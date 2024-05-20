@@ -1,7 +1,7 @@
 import { def, isObject, toRawType } from '@vue/shared'
 import type { RawSymbol, Ref, UnwrapRefSimple } from './ref'
 import { ReactiveFlags } from './constants'
-import { proxyHandlers } from './baseHandlers'
+import { proxyHandler } from './proxyHandler'
 
 export interface Target {
   [ReactiveFlags.SKIP]?: boolean
@@ -56,7 +56,6 @@ export type UnwrapNestedRefs<T> = T extends Ref ? T : UnwrapRefSimple<T>
  * @param target - The source object.
  * @see {@link https://vuejs.org/api/reactivity-core.html#reactive}
  */
-export function reactive<T extends object>(target: T): UnwrapNestedRefs<T>
 export function reactive(target: object) {
   if (!isObject(target)) {
     return target
@@ -78,34 +77,13 @@ export function reactive(target: object) {
   }
   const proxy = new Proxy(
     target,
-    proxyHandlers,
+    proxyHandler,
   )
   reactiveMap.set(target, proxy)
   return proxy
 }
 
-export declare const ShallowReactiveMarker: unique symbol
-
-export type ShallowReactive<T> = T & { [ShallowReactiveMarker]?: true }
-
-/**
- * Checks if an object is a proxy created by {@link reactive()} or
- * {@link shallowReactive()} (or {@link ref()} in some cases).
- *
- * @example
- * ```js
- * isReactive(reactive({}))            // => true
- * isReactive(readonly(reactive({})))  // => true
- * isReactive(ref({}).value)           // => true
- * isReactive(readonly(ref({})).value) // => true
- * isReactive(ref(true))               // => false
- * isReactive(shallowRef({}).value)    // => false
- * isReactive(shallowReactive({}))     // => true
- * ```
- *
- * @param value - The value to check.
- * @see {@link https://vuejs.org/api/reactivity-utilities.html#isreactive}
- */
+// 判断指定值是否是reactive对象
 export function isReactive(value: unknown): boolean {
   return !!(value && (value as Target)[ReactiveFlags.IS_REACTIVE])
 }
@@ -181,10 +159,3 @@ export function markRaw<T extends object>(value: T): Raw<T> {
   }
   return value
 }
-
-/**
- * 将参数响应式化，如果参数是对象的话，
- * 如果是原始值，直接返回
- */
-export const toReactive = <T extends unknown>(value: T): T =>
-  isObject(value) ? reactive(value) : value

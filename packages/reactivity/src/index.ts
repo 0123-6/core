@@ -25,7 +25,6 @@ export {
   markRaw,
   toRaw,
   type Raw,
-  type ShallowReactive,
   type UnwrapNestedRefs,
 } from './reactive'
 export {

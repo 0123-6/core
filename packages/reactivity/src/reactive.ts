@@ -1,21 +1,12 @@
 import { isObject } from '@vue/shared'
-import type { Ref, UnwrapRefSimple } from './ref'
 import { ReactiveFlags } from './constants'
 import { proxyHandler } from './proxyHandler'
 
-export interface Target {
-  [ReactiveFlags.SKIP]?: boolean
-  [ReactiveFlags.IS_REACTIVE]?: boolean
-  [ReactiveFlags.RAW]?: any
-}
-
-export const reactiveMap = new WeakMap<Target, any>()
-
-// only unwrap nested ref
-export type UnwrapNestedRefs<T> = T extends Ref ? T : UnwrapRefSimple<T>
+// 定义全局reactive对象的缓存
+export const reactiveMap = new WeakMap<object, any>()
 
 // 返回一个对象的响应式代理
-export function reactive(target: object) {
+export function reactive(target: object): any {
   // 如果target不是对象类型，直接返回
   if (!isObject(target)) {
     return target
@@ -42,7 +33,7 @@ export function reactive(target: object) {
 
 // 判断指定值是否是reactive对象
 export function isReactive(value: unknown): boolean {
-  return !!(value && (value as Target)[ReactiveFlags.IS_REACTIVE])
+  return !!(value && value[ReactiveFlags.IS_REACTIVE])
 }
 
 /**
@@ -82,6 +73,6 @@ export function isProxy(value: any): boolean {
  * @see {@link https://vuejs.org/api/reactivity-advanced.html#toraw}
  */
 export function toRaw<T>(observed: T): T {
-  const raw = observed && (observed as Target)[ReactiveFlags.RAW]
+  const raw = observed && observed[ReactiveFlags.RAW]
   return raw ? toRaw(raw) : observed
 }

@@ -1,7 +1,5 @@
 import {
-  type Target,
   reactive,
-  reactiveMap,
   toRaw,
 } from './reactive'
 import { ReactiveFlags, TrackOpTypes, TriggerOpTypes } from './constants'
@@ -17,7 +15,6 @@ import {
   hasOwn,
   isArray,
   isIntegerKey,
-  isObject,
   makeMap,
 } from '@vue/shared'
 import { isRef } from './ref'
@@ -65,30 +62,16 @@ function createArrayInstrumentations() {
 // handler拦截器对象
 export const proxyHandler = {
   // get拦截器
-  get(target: Target, key: string | symbol, receiver: object) {
-    if (key === ReactiveFlags.IS_REACTIVE) {
-      return true
-    } else {
-      if (key === ReactiveFlags.RAW) {
-        if (
-          receiver ===
-          (reactiveMap).get(target) ||
-          // receiver is not the reactive proxy, but has the same prototype
-          // this means the reciever is a user proxy of the reactive proxy
-          Object.getPrototypeOf(target) === Object.getPrototypeOf(receiver)
-        ) {
-          return target
-        }
-        // early return undefined
-        return
-      }
+  get(target: object, key: string | symbol, receiver: object) {
+    // 在toRaw工具函数会读取这个属性
+    if (key === ReactiveFlags.RAW) {
+      return target
     }
-
     // 判断target是否为数组,data()最外层为对象，所以不是数组
     const targetIsArray = isArray(target)
 
     // 特殊情况处理
-    if (targetIsArray && hasOwn(arrayInstrumentations, key)) {
+    if (targetIsArray && Object.hasOwn(arrayInstrumentations, key)) {
       return Reflect.get(arrayInstrumentations, key, receiver)
     }
 
@@ -102,20 +85,12 @@ export const proxyHandler = {
     // 追踪这个属性
     track(target, TrackOpTypes.GET, key)
 
+    // ref自动解包
     if (isRef(res)) {
-      // ref unwrapping - skip unwrap for Array + integer key.
-      return targetIsArray && isIntegerKey(key) ? res : res.value
+      return res.value
     }
-
-    if (isObject(res)) {
-      // Convert returned value into a proxy as well. we do the isObject check
-      // here to avoid invalid value warning. Also need to lazy access readonly
-      // and reactive here to avoid circular dependency.
-      return reactive(res)
-    }
-
-    // 返回获得的值
-    return res
+    // 将值响应式化，并返回
+    return reactive(res)
   },
 
   // set拦截器

@@ -1,5 +1,3 @@
-// 请详细学习每一个API
-
 // 内部API
 export {
   effect,

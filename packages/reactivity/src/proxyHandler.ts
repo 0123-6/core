@@ -89,6 +89,11 @@ export const proxyHandler = {
     if (isRef(res)) {
       return res.value
     }
+    // 如果res不是对象，直接返回原始对象
+    // 否则返回响应化后的proxy对象
+    if (typeof res !== 'object' || res === null) {
+      return res
+    }
     // 将值响应式化，并返回
     return reactive(res)
   },

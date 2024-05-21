@@ -18,8 +18,7 @@ import {
   isPromise,
   isString,
 } from '@vue/shared'
-import { type Ref, isRef } from '@vue/reactivity'
-import { computed } from './apiComputed'
+import { type Ref, isRef, computed } from '@vue/reactivity'
 import {
   type WatchCallback,
   type WatchOptions,
@@ -44,8 +43,6 @@ import {
   onUpdated,
 } from './apiLifecycle'
 import {
-  type ComputedGetter,
-  type WritableComputedOptions,
   reactive,
 } from '@vue/reactivity'
 import type {
@@ -384,7 +381,7 @@ export type ComponentOptionsMixin = ComponentOptionsBase<
 
 export type ComputedOptions = Record<
   string,
-  ComputedGetter<any> | WritableComputedOptions<any>
+  any
 >
 
 export interface MethodOptions {

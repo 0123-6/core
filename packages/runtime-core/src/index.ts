@@ -5,7 +5,6 @@ export {
   // core
   reactive,
   ref,
-  readonly,
   // utilities
   unref,
   proxyRefs,
@@ -15,15 +14,9 @@ export {
   toRefs,
   isProxy,
   isReactive,
-  isReadonly,
-  isShallow,
   // advanced
   customRef,
   triggerRef,
-  shallowRef,
-  shallowReactive,
-  shallowReadonly,
-  markRaw,
   toRaw,
   // effect
   effect,
@@ -31,11 +24,10 @@ export {
   ReactiveEffect,
   // effect scope
   effectScope,
-  EffectScope,
   getCurrentScope,
   onScopeDispose,
+  computed,
 } from '@vue/reactivity'
-export { computed } from './apiComputed'
 export {
   watch,
   watchEffect,
@@ -163,25 +155,11 @@ export type {
   ToRef,
   ToRefs,
   UnwrapRef,
-  ShallowRef,
   ShallowUnwrapRef,
   CustomRefFactory,
   ReactiveFlags,
-  DeepReadonly,
-  ShallowReactive,
-  UnwrapNestedRefs,
-  ComputedRef,
-  WritableComputedRef,
-  WritableComputedOptions,
-  ComputedGetter,
-  ComputedSetter,
   ReactiveEffectRunner,
-  ReactiveEffectOptions,
   EffectScheduler,
-  DebuggerOptions,
-  DebuggerEvent,
-  DebuggerEventExtraInfo,
-  Raw,
 } from '@vue/reactivity'
 export type {
   WatchEffect,

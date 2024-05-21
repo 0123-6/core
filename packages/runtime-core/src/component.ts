@@ -1,19 +1,18 @@
-import {isVNode, type VNode, type VNodeChild} from './vnode'
+import {type VNode, type VNodeChild} from './vnode'
 import {
-  EffectScope,
+  effectScope,
   isRef,
   pauseTracking,
   proxyRefs,
   type ReactiveEffect,
   resetTracking,
   track,
-  TrackOpTypes,
+  TrackOpTypes
 } from '@vue/reactivity'
 import {
   type ComponentPublicInstance,
   type ComponentPublicInstanceConstructor,
   createDevRenderContext,
-  exposeSetupStateOnRenderContext,
   PublicInstanceProxyHandlers,
   publicPropertiesMap,
   RuntimeCompiledPublicInstanceProxyHandlers,
@@ -283,7 +282,7 @@ export interface ComponentInternalInstance {
    * so that they can be automatically stopped on component unmount
    * @internal
    */
-  scope: EffectScope
+  scope: any
   /**
    * cache for proxy access type to avoid hasOwnProperty calls
    * @internal
@@ -520,7 +519,7 @@ export function createComponentInstance(
     subTree: null!, // will be set synchronously right after creation
     effect: null!,
     update: null!, // will be set synchronously right after creation
-    scope: new EffectScope(true /* detached */),
+    scope: effectScope(true /* detached */),
     render: null,
     proxy: null,
     exposed: null,
@@ -704,27 +703,9 @@ export function handleSetupResult(
   if (isFunction(setupResult)) {
     instance.render = setupResult as InternalRenderFunction
   } else if (isObject(setupResult)) {
-    if (__DEV__ && isVNode(setupResult)) {
-      warn(
-        `setup() should not return VNodes directly - ` +
-          `return a render function instead.`,
-      )
-    }
     // setup returned bindings.
     // assuming a render function compiled from template is present.
-    if (__DEV__ || __FEATURE_PROD_DEVTOOLS__) {
-      instance.devtoolsRawSetupState = setupResult
-    }
     instance.setupState = proxyRefs(setupResult)
-    if (__DEV__) {
-      exposeSetupStateOnRenderContext(instance)
-    }
-  } else if (__DEV__ && setupResult !== undefined) {
-    warn(
-      `setup() should return an object. Received: ${
-        setupResult === null ? 'null' : typeof setupResult
-      }`,
-    )
   }
   finishComponentSetup(instance)
 }
@@ -969,8 +950,4 @@ export function formatComponentName(
   }
 
   return name ? classify(name) : isRoot ? `App` : `Anonymous`
-}
-
-export function isClassComponent(value: unknown): value is ClassComponent {
-  return isFunction(value) && '__vccOpts' in value
 }

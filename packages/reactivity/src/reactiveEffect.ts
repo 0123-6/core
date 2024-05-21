@@ -36,15 +36,22 @@ export const MAP_KEY_ITERATE_KEY = Symbol('')
 export function track(target: object, type: TrackOpTypes, key: unknown) {
   // 我从控制台改变的，此时shouldTrack为true，activeEffect为undefined
   // 说明此时不存在观察者，追踪结束。
+  // 如果是Vue.computed(() => {})触发的，shouldTrack为true，
+  // 且activeEffect为ComputedRefImpl实例的effect属性
   if (shouldTrack && activeEffect) {
+    // 获取当前target对应的map
     let depsMap = targetMap.get(target)
+    // 如果对应的map不存在，在targetMap放入target
     if (!depsMap) {
       targetMap.set(target, (depsMap = new Map()))
     }
+    // 获取当前属性对应的map
     let dep = depsMap.get(key)
+    // 如果当前属性对应的map不存在,则放入map中
     if (!dep) {
       depsMap.set(key, (dep = createDep(() => depsMap!.delete(key))))
     }
+    // 追踪computedRefImpl.effect
     trackEffect(
       activeEffect,
       dep,

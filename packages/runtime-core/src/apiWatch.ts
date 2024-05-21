@@ -1,6 +1,4 @@
 import {
-  type ComputedRef,
-  type DebuggerOptions,
   type EffectScheduler,
   ReactiveEffect,
   ReactiveFlags,
@@ -38,7 +36,7 @@ import type { ObjectWatchOptionItem } from './componentOptions'
 
 export type WatchEffect = (onCleanup: OnCleanup) => void
 
-export type WatchSource<T = any> = Ref<T> | ComputedRef<T> | (() => T)
+export type WatchSource<T = any> = Ref<T> | (() => T)
 
 export type WatchCallback<V = any, OV = any> = (
   value: V,
@@ -60,7 +58,7 @@ type MapSources<T, Immediate> = {
 
 type OnCleanup = (cleanupFn: () => void) => void
 
-export interface WatchOptionsBase extends DebuggerOptions {
+export interface WatchOptionsBase {
   flush?: 'pre' | 'post' | 'sync'
 }
 

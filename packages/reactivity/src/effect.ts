@@ -6,7 +6,7 @@ import {
   type TriggerOpTypes,
 } from './constants'
 import type { Dep } from './dep'
-import { type EffectScope, recordEffectScope } from './effectScope'
+import { recordEffectScope } from './effectScope'
 
 export type EffectScheduler = (...args: any[]) => any
 
@@ -21,6 +21,9 @@ export type DebuggerEventExtraInfo = {
 
 export let activeEffect: ReactiveEffect | undefined
 
+/**
+ * 响应式效果类
+ */
 export class ReactiveEffect<T = any> {
   active = true
   deps: Dep[] = []
@@ -62,12 +65,14 @@ export class ReactiveEffect<T = any> {
     public fn: () => T,
     public trigger: () => void,
     public scheduler?: EffectScheduler,
-    scope?: EffectScope,
+    scope?: any,
   ) {
     recordEffectScope(this, scope)
   }
 
+  // 读取dirty属性
   public get dirty() {
+    // 如果当前响应式效果的脏等级为可能脏
     if (
       this._dirtyLevel === DirtyLevels.MaybeDirty_ComputedSideEffect ||
       this._dirtyLevel === DirtyLevels.MaybeDirty
@@ -88,6 +93,7 @@ export class ReactiveEffect<T = any> {
       }
       resetTracking()
     }
+    // 返回当前响应式效果的脏等级是否在于一定脏对应的脏等级
     return this._dirtyLevel >= DirtyLevels.Dirty
   }
 
@@ -95,17 +101,26 @@ export class ReactiveEffect<T = any> {
     this._dirtyLevel = v ? DirtyLevels.Dirty : DirtyLevels.NotDirty
   }
 
+  // 运行
   run() {
+    // 将当前响应式效果的脏等级修改为不脏
     this._dirtyLevel = DirtyLevels.NotDirty
+    // 如果当前响应式效果对象不是活跃状态,直接调用和返回this.fn()
     if (!this.active) {
       return this.fn()
     }
+    // 缓存shouldTrack
     let lastShouldTrack = shouldTrack
+    // 缓存activeEffect
     let lastEffect = activeEffect
     try {
+      // 设置应该追踪标识符为true
       shouldTrack = true
+      // 设置活跃的响应式效果对象为当前对象
       activeEffect = this
+      // ???
       this._runnings++
+      // ???
       preCleanupEffect(this)
       // 真正调用的函数
       return this.fn()
@@ -131,8 +146,11 @@ function triggerComputed(computed: ComputedRefImpl) {
   return computed.value
 }
 
+// ???
 function preCleanupEffect(effect: ReactiveEffect) {
+  // 追踪id += 1
   effect._trackId++
+  // 对应的依赖的长度为0
   effect._depsLength = 0
 }
 
@@ -195,6 +213,7 @@ export function stop(runner: ReactiveEffectRunner) {
   runner.effect.stop()
 }
 
+// 标识符，是否应该追踪依赖
 export let shouldTrack = true
 export let pauseScheduleStack = 0
 
@@ -239,6 +258,11 @@ export function resetScheduling() {
   }
 }
 
+/**
+ * 追踪computedRefImpl.effect，一个响应式效果对象
+ * @param effect 一个响应式效果对象
+ * @param dep 该响应式效果对应的map，记录所有的依赖
+ */
 export function trackEffect(
   effect: ReactiveEffect,
   dep: Dep,

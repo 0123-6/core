@@ -2,7 +2,7 @@ import type { ReactiveEffect } from './effect'
 
 let activeEffectScope: EffectScope | undefined
 
-export class EffectScope {
+class EffectScope {
   /**
    * @internal
    */

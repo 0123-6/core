@@ -139,35 +139,6 @@ class RefImpl {
   }
 }
 
-/**
- * Force trigger effects that depends on a shallow ref. This is typically used
- * after making deep mutations to the inner value of a shallow ref.
- *
- * @example
- * ```js
- * const shallow = shallowRef({
- *   greet: 'Hello, world'
- * })
- *
- * // Logs "Hello, world" once for the first run-through
- * watchEffect(() => {
- *   console.log(shallow.value.greet)
- * })
- *
- * // This won't trigger the effect because the ref is shallow
- * shallow.value.greet = 'Hello, universe'
- *
- * // Logs "Hello, universe"
- * triggerRef(shallow)
- * ```
- *
- * @param ref - The ref whose tied effects shall be executed.
- * @see {@link https://vuejs.org/api/reactivity-advanced.html#triggerref}
- */
-export function triggerRef(ref: Ref) {
-  triggerRefValue(ref, DirtyLevels.Dirty)
-}
-
 export type MaybeRef<T = any> = T | Ref<T>
 export type MaybeRefOrGetter<T = any> = MaybeRef<T> | (() => T)
 

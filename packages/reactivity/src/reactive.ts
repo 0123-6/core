@@ -36,42 +36,12 @@ export function isReactive(value: unknown): boolean {
   return !!(value && value[ReactiveFlags.IS_REACTIVE])
 }
 
-/**
- * Checks if an object is a proxy created by {@link reactive},
- * {@link readonly}, {@link shallowReactive} or {@link shallowReadonly()}.
- *
- * @param value - The value to check.
- * @see {@link https://vuejs.org/api/reactivity-utilities.html#isproxy}
- */
+// 判断一个参数是否是Proxy对象
 export function isProxy(value: any): boolean {
   return value ? !!value[ReactiveFlags.RAW] : false
 }
 
-/**
- * Returns the raw, original object of a Vue-created proxy.
- *
- * `toRaw()` can return the original object from proxies created by
- * {@link reactive()}, {@link readonly()}, {@link shallowReactive()} or
- * {@link shallowReadonly()}.
- *
- * This is an escape hatch that can be used to temporarily read without
- * incurring proxy access / tracking overhead or write without triggering
- * changes. It is **not** recommended to hold a persistent reference to the
- * original object. Use with caution.
- *
- * @example
- * ```js
- * const foo = {}
- * const reactiveFoo = reactive(foo)
- *
- * console.log(toRaw(reactiveFoo) === foo) // true
- * 返回被Proxy代理的原始对象。绕过proxy，避免性能浪费。
- *
- * ```
- *
- * @param observed - The object for which the "raw" value is requested.
- * @see {@link https://vuejs.org/api/reactivity-advanced.html#toraw}
- */
+// 返回被Proxy代理的原始对象。绕过proxy，避免性能浪费。
 export function toRaw<T>(observed: T): T {
   const raw = observed && observed[ReactiveFlags.RAW]
   return raw ? toRaw(raw) : observed

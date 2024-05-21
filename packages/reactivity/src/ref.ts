@@ -15,16 +15,8 @@ import {
 import { type Dep, createDep } from './dep'
 import { ComputedRefImpl } from './computed'
 
-declare const RefSymbol: unique symbol
-
-export interface Ref<T = any> {
-  value: T
-  /**
-   * Type differentiator only.
-   * We need this to be in public d.ts but don't want it to show up in IDE
-   * autocomplete, so we use a private Symbol instead.
-   */
-  [RefSymbol]: true
+export interface Ref {
+  value: any
 }
 
 type RefBase<T> = {
@@ -34,6 +26,7 @@ type RefBase<T> = {
 
 /**
  * 追踪该依赖，如果此时有观察者，将观察者的依赖数组添加当前ref对象。
+ * ref + 计算属性专用
  * @param ref 正在被读取的RefImpl对象。
  */
 export function trackRefValue(ref: RefBase<any>) {
@@ -51,7 +44,7 @@ export function trackRefValue(ref: RefBase<any>) {
 }
 
 /**
- * 触发ref的所有订阅者
+ * 触发ref的所有订阅者,ref + 计算属性专用
  * @param ref
  * @param dirtyLevel
  */
@@ -155,6 +148,7 @@ const shallowUnwrapHandlers: ProxyHandler<any> = {
  * If the object already is reactive, it's returned as-is. If not, a new
  * reactive proxy is created. Direct child properties that are refs are properly
  * handled, as well.
+ * 组件专用
  *
  * @param objectWithRefs - Either an already-reactive object or a simple object
  * that contains refs.
@@ -175,6 +169,9 @@ type CustomRefFactory<T> = (
   set: (value: T) => void
 }
 
+/**
+ * 自定义ref实现
+ */
 class CustomRefImpl<T> {
   public dep?: Dep = undefined
 
@@ -208,6 +205,6 @@ class CustomRefImpl<T> {
  * @param factory - The function that receives the `track` and `trigger` callbacks.
  * @see {@link https://vuejs.org/api/reactivity-advanced.html#customref}
  */
-export function customRef<T>(factory: CustomRefFactory<T>): Ref<T> {
+export function customRef<T>(factory: CustomRefFactory<T>): Ref {
   return new CustomRefImpl(factory) as any
 }

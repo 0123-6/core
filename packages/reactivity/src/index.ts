@@ -31,27 +31,14 @@ export {
 export {
   ref,// 核心API
   isRef,// 工具API
-  toRef,// 工具API
-  toValue,// 工具API
-  toRefs,// 工具API
-  unref,// 工具API
   proxyRefs,// runtime-core/component.ts用到了
   customRef,// 进阶API
   type Ref,
-  type MaybeRef,
-  type MaybeRefOrGetter,
-  type ToRef,
-  type ToRefs,
-  type UnwrapRef,
-  type ShallowUnwrapRef,
-  type RefUnwrapBailTypes,
-  type CustomRefFactory,
 } from './ref'
 
 // 响应式核心
 export {
   computed,// 核心API
-  type ComputedRefImpl,
 } from './computed'
 
 // 响应式进阶
